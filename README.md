@@ -63,7 +63,7 @@ After characterizing the dataset, you can predict the which of the various pre-t
 The output will be in the following format:
 
 |Rank|Score|Model|
-|====|=====|=====|
+|----|-----|-----|
 |1|0.2368|microsoft/mpnet-base|
 |2|0.1944|openai-community/gpt2|
 |3|0.1578|facebook/opt-1.3b|
@@ -99,7 +99,6 @@ Here are the commands to fine-tune the next few recommended models for the selec
 ./finetune.sh -d "$DATASET" -m "facebook/opt-1.3b" \
     --train-split="$TRAIN_SPLIT" \
     --test-split="$TEST_SPLIT"
-    --no-cuda
 
 ./finetune.sh -d "$DATASET" -m "xlnet/xlnet-base-cased" \
     --train-split="$TRAIN_SPLIT" \
