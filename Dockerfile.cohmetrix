@@ -1,0 +1,44 @@
+FROM ubuntu:24.04
+
+ARG license
+
+ENV N_THREADS=1
+ENV COHMETRIX_LICENSE=${license}
+
+# Set environment variables to non-interactive to avoid prompts during installation
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ID=ubuntu
+ENV VERSION_ID=24.04
+
+# Install dependencies
+RUN apt-get update && apt-get install -y wget unzip software-properties-common \
+    && add-apt-repository ppa:dotnet/backports \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    dotnet-sdk-6.0 \
+    aspnetcore-runtime-7.0 \
+    dotnet-host-7.0 \
+    dotnet-hostfxr-7.0 \
+    dotnet-runtime-7.0 \
+    python3 \
+    python3-venv \
+    python3-pip \
+    python3-decouple \
+    python3-pandas \
+    && rm -rf /var/lib/apt/lists/*
+    
+# Install Coh-Metrix
+RUN wget https://github.com/memphis-iis/cohmetrix-issues/raw/298a06e4d2ef0f3b48af9ad75a8f6beb8fdd941a/cohmetrixcorecli_1.0.4_linux.i686.deb \
+    && dpkg -i cohmetrixcorecli_1.0.4_linux.i686.deb \
+    && echo -n "$COHMETRIX_LICENSE" > /usr/local/bin/cohmetrixcore/net6.0/license.txt \
+    && wget http://cohmetrix.memphis.edu/api/downloadData \
+    && mkdir -p /root/.local/share/CohMetrixCore \
+    && unzip downloadData -d /root/.local/share/CohMetrixCore/ \
+    && rm cohmetrixcorecli_1.0.4_linux.i686.deb \
+    && rm downloadData
+
+WORKDIR	/root
+COPY scripts/feat_psy_cohmetrix.py /root/scripts/feat_psy_cohmetrix.py
+
+# RUN chmod 777 /cohmetrix.py
+
+CMD ["python3", "cohmetrix.py", "-i", "/datasets/*/**/*.txt", "-o", "/features"]

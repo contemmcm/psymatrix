@@ -1,0 +1,87 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Convert Dataset (Complete)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "convert_dataset.py",
+            "args": [
+                "--name_or_path", "contemmcm/20_newsgroups",
+                "--output_name", "PsyMatrix/cls_20newsgroups_SubjectTextVsLabel__BaseDefault",
+                "--train_split", "complete",
+                "--test_split", "complete",
+                "--train_size", "10000",
+                "--test_size", "2000",
+                "--content_cols", "subject+text",
+                "--label_col", "label"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Convert Dataset (Default)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "convert_dataset.py",
+            "args": [
+                "--name_or_path", "SetFit/20_newsgroups",
+                "--output_name", "SetFit/20_newsgroups",
+                "--train_split", "train",
+                "--test_split", "test",
+                "--content_cols", "text",
+                "--label_col", "label"
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Dump Documents",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "dump_documents.py",
+            "args": [
+                "--name_or_path", "SetFit/20_newsgroups",
+                "--split", "train",
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "TextStat",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "scripts/feat_psy_textstat.py",
+            "args": [
+                "--name_or_path", "SetFit/20_newsgroups",
+                "--split", "train",
+            ],
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "TAACO",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "scripts/feat_psy_taaco.py",
+            "args": [
+                "--name_or_path", "SetFit/20_newsgroups",
+                "--split", "train",
+            ],
+            "console": "integratedTerminal"
+
+        },
+        {
+            "name": "CohMetrix",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "scripts/feat_psy_cohmetrix.py",
+            "args": [
+                "--name_or_path", "SetFit/20_newsgroups",
+                "--split", "train",
+                "--processes", "1"
+            ],
+            "console": "integratedTerminal"
+
+        }
+    ]
+}
