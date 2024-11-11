@@ -108,3 +108,31 @@ Here are the commands to fine-tune the next few recommended models for the selec
     --train-split="$TRAIN_SPLIT" \
     --test-split="$TEST_SPLIT"
 ```
+
+# Citation
+
+You can download our EMNLP24 Findings paper [here](https://aclanthology.org/2024.findings-emnlp.880.pdf)
+
+If you find this project useful, please consider citing it:
+
+
+```
+@inproceedings{monteiro-etal-2024-characterizing,
+    title = "Characterizing Text Datasets with Psycholinguistic Features",
+    author = "Monteiro, Marcio  and
+      Karakkaparambil James, Charu  and
+      Kloft, Marius  and
+      Fellenz, Sophie",
+    editor = "Al-Onaizan, Yaser  and
+      Bansal, Mohit  and
+      Chen, Yun-Nung",
+    booktitle = "Findings of the Association for Computational Linguistics: EMNLP 2024",
+    month = nov,
+    year = "2024",
+    address = "Miami, Florida, USA",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2024.findings-emnlp.880",
+    pages = "14977--14990",
+    abstract = "Fine-tuning pretrained language models on task-specific data is a common practice in Natural Language Processing (NLP) applications. However, the number of pretrained models available to choose from can be very large, and it remains unclear how to select the optimal model without spending considerable amounts of computational resources, especially for the text domain. To address this problem, we introduce PsyMatrix, a novel framework designed to efficiently characterize text datasets. PsyMatrix evaluates multiple dimensions of text and discourse, producing interpretable, low-dimensional embeddings. Our framework has been tested using a meta-dataset repository that includes the performance of 24 pretrained large language models fine-tuned across 146 classification datasets. Using the proposed embeddings, we successfully developed a meta-learning system capable of recommending the most effective pretrained models (optimal and near-optimal) for fine-tuning on new datasets.",
+}
+```
