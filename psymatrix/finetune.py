@@ -19,10 +19,6 @@ from shutil import rmtree
 from typing import Union
 
 import torch
-from datasets import load_dataset
-from datasets.arrow_dataset import Dataset
-from datasets.dataset_dict import DatasetDict, IterableDatasetDict
-from datasets.iterable_dataset import IterableDataset
 from sklearn.metrics import accuracy_score
 from transformers import (
     AutoConfig,
@@ -33,9 +29,14 @@ from transformers import (
     TrainerCallback,
     TrainingArguments,
 )
+from datasets import load_dataset
+from datasets.arrow_dataset import Dataset
+from datasets.dataset_dict import DatasetDict, IterableDatasetDict
+from datasets.iterable_dataset import IterableDataset
+
 
 MAX_TOKENS = 1024
-MAX_EPOCHS = 30
+MAX_EPOCHS = 300
 EARLY_STOPPING_PATIENCE = 3
 
 BATCH_SIZE = 8
@@ -241,6 +242,7 @@ def finetune(
     train_split: str = "train",
     test_split: str = "test",
     no_cuda: bool = False,
+    data_files=None,
 ):
     """
     Finetune the pre-trained model on the given dataset.
@@ -255,7 +257,7 @@ def finetune(
             metrics = json.load(f)
         return metrics
 
-    dataset = load_dataset(dataset_name_or_path)
+    dataset = load_dataset(dataset_name_or_path, data_files=data_files)
 
     model = AutoModelForSequenceClassification.from_pretrained(
         model_id,
