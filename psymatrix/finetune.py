@@ -8,9 +8,15 @@ $ python -m psymatrix.finetune \
 $ python -m psymatrix.finetune \
     -e "emnlp24" \
     -d "PsyMatrix/cls_agnews_SourceTitleTextVsLabel__BaseTop4Balanced"
+
+$ python -m psymatrix.finetune \
+    -e "icml25" \
+    -m "google-bert/bert-base-cased" \
+    -d "PsyMatrix/cls_20newsgroups_SubjectTextVsLabel__BaseDefault"
 """
 
 import argparse
+from itertools import product
 import json
 import os
 import time
@@ -19,10 +25,6 @@ from shutil import rmtree
 from typing import Union
 
 import torch
-from datasets import load_dataset
-from datasets.arrow_dataset import Dataset
-from datasets.dataset_dict import DatasetDict, IterableDatasetDict
-from datasets.iterable_dataset import IterableDataset
 from sklearn.metrics import accuracy_score
 from transformers import (
     AutoConfig,
@@ -33,6 +35,12 @@ from transformers import (
     TrainerCallback,
     TrainingArguments,
 )
+
+from datasets import load_dataset
+from datasets.arrow_dataset import Dataset
+from datasets.dataset_dict import DatasetDict, IterableDatasetDict
+from datasets.iterable_dataset import IterableDataset
+
 
 MAX_TOKENS = 1024
 MAX_EPOCHS = 30
@@ -129,13 +137,18 @@ class SaveMetricsCallback(TrainerCallback):
     """
 
     def __init__(
-        self, model_id: str, dataset_name_or_path: str, test_split: str = "test"
+        self,
+        model_id: str,
+        dataset_name_or_path: str,
+        test_split: str = "test",
+        hyperparameters_id: int = None,
     ):
         self.model_id = model_id
         self.dataset_name_or_path = dataset_name_or_path
         self.metrics = []
         self.is_disabled = False
         self.test_split = test_split
+        self.hyperparameters_id = hyperparameters_id
         super().__init__()
 
     def disable(self):
@@ -154,14 +167,18 @@ class SaveMetricsCallback(TrainerCallback):
         self.metrics.append(metrics)
 
         # Save metrics to a file
-        fname = os.path.join(
+        fname_base = os.path.join(
             "data",
             "performance",
             self.dataset_name_or_path,
             self.test_split,
             self.model_id,
-            "metrics_all.json",
         )
+
+        if self.hyperparameters_id is not None:
+            fname_base = f"{fname_base}_hp-{self.hyperparameters_id:03d}"
+
+        fname = f"{fname_base}/metrics_all.json"
 
         # Ensure the output directory exists
         os.makedirs(os.path.dirname(fname), exist_ok=True)
@@ -241,14 +258,19 @@ def finetune(
     train_split: str = "train",
     test_split: str = "test",
     no_cuda: bool = False,
+    hyperparameters_id: int = None,
+    hyperparameters: dict = None,
 ):
     """
     Finetune the pre-trained model on the given dataset.
     """
 
-    fname_output = (
-        f"data/performance/{dataset_name_or_path}/{test_split}/{model_id}/metrics.json"
-    )
+    fname_base = f"data/performance/{dataset_name_or_path}/{test_split}/{model_id}"
+
+    if hyperparameters_id is not None:
+        fname_base = f"{fname_base}_hp-{hyperparameters_id:03d}"
+
+    fname_output = f"{fname_base}/metrics.json"
 
     if os.path.exists(fname_output) and not overwrite:
         with open(fname_output, "r", encoding="utf8") as f:
@@ -271,10 +293,22 @@ def finetune(
     # if DEVICE_COUNT > 1:
     #     model = torch.nn.DataParallel(model)
 
+    _training_args = DEFAULT_TRAINING_ARGS.copy()
+
+    if hyperparameters:
+        if "learning_rate" in hyperparameters:
+            _training_args["learning_rate"] = hyperparameters["learning_rate"]
+
+        if "batch_size" in hyperparameters:
+            _training_args["per_device_train_batch_size"] = hyperparameters[
+                "batch_size"
+            ]
+            _training_args["per_device_eval_batch_size"] = hyperparameters["batch_size"]
+
     training_args = TrainingArguments(
         output_dir=f"data/finetune/{dataset_name_or_path}/{model_id}",
         no_cuda=no_cuda,
-        **DEFAULT_TRAINING_ARGS,
+        **_training_args,
     )
 
     tokenizer = AutoTokenizer.from_pretrained(model_id)
@@ -295,7 +329,10 @@ def finetune(
     test_dataset = dataset[test_split].map(tokenize, batched=True)
 
     save_callback = SaveMetricsCallback(
-        model_id, dataset_name_or_path, test_split=test_split
+        model_id,
+        dataset_name_or_path,
+        test_split=test_split,
+        hyperparameters_id=hyperparameters_id,
     )
 
     # Train the model
@@ -327,6 +364,10 @@ def finetune(
 
     with open(fname_output, "w", encoding="utf8") as f:
         json.dump(metrics, f, indent=2)
+
+    # Save training arguments
+    with open(f"{fname_base}/training_args.json", "w", encoding="utf8") as f:
+        json.dump(training_args.to_dict(), f, indent=2)
 
     if clean_up:
         # Clean up the training directory
@@ -362,15 +403,37 @@ def load_models(experiment):
     return models
 
 
+def load_hyper_parameters(experiment: str):
+    """
+    Expand the hyperparameter optimization results.
+    """
+    fname = f"experiments/{experiment}/hpo.json"
+
+    if not os.path.exists(fname):
+        return None
+
+    with open(fname, "r", encoding="utf8") as f:
+        hpo = json.load(f)
+
+    keys = list(hpo.keys())
+    values = list(hpo.values())
+
+    combinations = list(product(*values))
+
+    return keys, combinations
+
+
 def run():
     args = parser.parse_args()
 
     models = []
     datasets = []
+    hpo = None
 
     if args.experiment:
         models = load_models(args.experiment)
         datasets = load_datasets(args.experiment)
+        hpo = load_hyper_parameters(args.experiment)
 
     if args.model_id:
         models = [args.model_id]
@@ -385,15 +448,35 @@ def run():
 
     for model_id in models:
         for dataset_id in datasets:
-            print(f"Finetuning {model_id} on {dataset_id}")
-            metrics = finetune(
-                model_id,
-                dataset_id,
-                train_split=args.train_split,
-                test_split=args.test_split,
-                no_cuda=args.no_cuda,
-            )
-            print(metrics)
+            if hpo:  # Perform grid search over hyper parameters
+                hpo_keys = hpo[0]
+                hpo_values = hpo[1]
+
+                for idx, value in enumerate(hpo_values):
+                    hyperparameters = dict(zip(hpo_keys, value))
+                    print(
+                        f"Finetuning {model_id} on {dataset_id} with hyperparameters: {hyperparameters}"
+                    )
+                    metrics = finetune(
+                        model_id,
+                        dataset_id,
+                        train_split=args.train_split,
+                        test_split=args.test_split,
+                        no_cuda=args.no_cuda,
+                        hyperparameters_id=idx,
+                        hyperparameters=hyperparameters,
+                    )
+
+            else:
+                print(f"Finetuning {model_id} on {dataset_id}")
+                metrics = finetune(
+                    model_id,
+                    dataset_id,
+                    train_split=args.train_split,
+                    test_split=args.test_split,
+                    no_cuda=args.no_cuda,
+                )
+                print(metrics)
 
 
 if __name__ == "__main__":
