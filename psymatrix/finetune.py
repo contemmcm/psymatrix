@@ -67,16 +67,6 @@ DEFAULT_TRAINING_ARGS = {
     "fp16": True,
 }
 
-if torch.cuda.is_available():
-    DEVICE = "cuda"
-    DEVICE_COUNT = torch.cuda.device_count()
-elif torch.backends.mps.is_available():
-    DEVICE = "mps"
-    DEVICE_COUNT = torch.mps.device_count()
-else:
-    DEVICE = "cpu"
-    DEVICE_COUNT = 1
-
 parser = argparse.ArgumentParser(
     description="Finetune a pretrained model on a specific task-dataset."
 )
@@ -208,12 +198,8 @@ def get_tokenizer_max_length(model_id: str):
     """
     Get the maximum length of the tokenizer.
     """
-    config = AutoConfig.from_pretrained(model_id)
-    tokenizer_max_length = config.max_position_embeddings
-
-    if tokenizer_max_length < 0:
-        tokenizer = AutoTokenizer.from_pretrained(model_id)
-        tokenizer_max_length = tokenizer.model_max_length
+    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    tokenizer_max_length = tokenizer.model_max_length
 
     return min(tokenizer_max_length, MAX_TOKENS)
 
@@ -267,17 +253,21 @@ def finetune(
     """
     Finetune the pre-trained model on the given dataset.
     """
-    fname_base = os.path.join(
-        "data",
-        "performance",
+    fname_model_base = os.path.join(
         dataset_name_or_path,
-        test_split,
         model_id,
         f"train-{train_split_usage:03d}_test-{test_split_usage:03d}",
     )
 
     if hyperparameters_id is not None:
-        fname_base = f"{fname_base}_hp-{hyperparameters_id:03d}"
+        fname_model_base = f"{fname_model_base}_hp-{hyperparameters_id:03d}"
+
+    fname_base = os.path.join(
+        "data",
+        "performance",
+        fname_model_base,
+        test_split,
+    )
 
     fname_output = os.path.join(fname_base, "metrics.json")
 
@@ -315,7 +305,7 @@ def finetune(
             _training_args["per_device_eval_batch_size"] = hyperparameters["batch_size"]
 
     training_args = TrainingArguments(
-        output_dir=f"data/finetune/{dataset_name_or_path}/{model_id}",
+        output_dir=f"data/finetune/{fname_model_base}",
         no_cuda=no_cuda,
         **_training_args,
     )
@@ -462,7 +452,18 @@ def run():
     if not models or not datasets:
         raise ValueError("No models or datasets specified.")
 
-    print(f"Device: {DEVICE} (x{DEVICE_COUNT})")
+    device = "cpu"
+    device_count = 1
+
+    if not args.no_cuda:
+        if torch.cuda.is_available():
+            device = "cuda"
+            device_count = torch.cuda.device_count()
+        elif torch.backends.mps.is_available():
+            device = "mps"
+            device_count = torch.mps.device_count()
+
+    print(f"Device: {device} (x{device_count})")
 
     for model_id in models:
         for dataset_id in datasets:
