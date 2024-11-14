@@ -64,7 +64,7 @@ DEFAULT_TRAINING_ARGS = {
     "save_strategy": "epoch",
     "save_total_limit": 1,
     "load_best_model_at_end": True,
-    "fp16": True,
+    "fp16": False,
 }
 
 parser = argparse.ArgumentParser(
