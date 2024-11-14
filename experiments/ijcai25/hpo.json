@@ -1,0 +1,4 @@
+{
+    "learning_rate": [2.5e-6],
+    "batch_size": [16]
+}
