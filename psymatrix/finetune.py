@@ -45,6 +45,7 @@ from datasets.iterable_dataset import IterableDataset
 MAX_TOKENS = 1024
 MAX_EPOCHS = 30
 EARLY_STOPPING_PATIENCE = 3
+SEED = 42
 
 BATCH_SIZE = 8
 LEARNING_RATE = 2.5e-6
@@ -115,11 +116,27 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--train-split-usage",
+    dest="train_split_usage",
+    default=100,
+    type=int,
+    help="The percentage of the train split to use for training (0-100).",
+)
+
+parser.add_argument(
     "--test-split",
     dest="test_split",
     default="test",
     help="The name of the split to use for testing.",
     required=False,
+)
+
+parser.add_argument(
+    "--test-split-usage",
+    dest="test_split_usage",
+    default=100,
+    type=int,
+    help="The percentage of the test split to use for evaluation (0-100).",
 )
 
 parser.add_argument(
@@ -138,16 +155,12 @@ class SaveMetricsCallback(TrainerCallback):
 
     def __init__(
         self,
-        model_id: str,
-        dataset_name_or_path: str,
-        test_split: str = "test",
+        fname_base: str,
         hyperparameters_id: int = None,
     ):
-        self.model_id = model_id
-        self.dataset_name_or_path = dataset_name_or_path
         self.metrics = []
+        self.fname_base = fname_base
         self.is_disabled = False
-        self.test_split = test_split
         self.hyperparameters_id = hyperparameters_id
         super().__init__()
 
@@ -166,19 +179,7 @@ class SaveMetricsCallback(TrainerCallback):
 
         self.metrics.append(metrics)
 
-        # Save metrics to a file
-        fname_base = os.path.join(
-            "data",
-            "performance",
-            self.dataset_name_or_path,
-            self.test_split,
-            self.model_id,
-        )
-
-        if self.hyperparameters_id is not None:
-            fname_base = f"{fname_base}_hp-{self.hyperparameters_id:03d}"
-
-        fname = f"{fname_base}/metrics_all.json"
+        fname = f"{self.fname_base}/metrics_all.json"
 
         # Ensure the output directory exists
         os.makedirs(os.path.dirname(fname), exist_ok=True)
@@ -260,17 +261,25 @@ def finetune(
     no_cuda: bool = False,
     hyperparameters_id: int = None,
     hyperparameters: dict = None,
+    train_split_usage=100,
+    test_split_usage=100,
 ):
     """
     Finetune the pre-trained model on the given dataset.
     """
-
-    fname_base = f"data/performance/{dataset_name_or_path}/{test_split}/{model_id}"
+    fname_base = os.path.join(
+        "data",
+        "performance",
+        dataset_name_or_path,
+        test_split,
+        model_id,
+        f"train-{train_split_usage:03d}_test-{test_split_usage:03d}",
+    )
 
     if hyperparameters_id is not None:
         fname_base = f"{fname_base}_hp-{hyperparameters_id:03d}"
 
-    fname_output = f"{fname_base}/metrics.json"
+    fname_output = os.path.join(fname_base, "metrics.json")
 
     if os.path.exists(fname_output) and not overwrite:
         with open(fname_output, "r", encoding="utf8") as f:
@@ -325,15 +334,24 @@ def finetune(
         model_id,
     )
 
+    if train_split_usage < 100:
+        dataset[train_split] = (
+            dataset[train_split]
+            .shuffle(seed=SEED)
+            .select(range(int(train_split_usage * len(dataset[train_split]) / 100)))
+        )
+
+    if test_split_usage < 100:
+        dataset[test_split] = (
+            dataset[test_split]
+            .shuffle(seed=SEED)
+            .select(range(int(test_split_usage * len(dataset[test_split]) / 100)))
+        )
+
     train_dataset = dataset[train_split].map(tokenize, batched=True)
     test_dataset = dataset[test_split].map(tokenize, batched=True)
 
-    save_callback = SaveMetricsCallback(
-        model_id,
-        dataset_name_or_path,
-        test_split=test_split,
-        hyperparameters_id=hyperparameters_id,
-    )
+    save_callback = SaveMetricsCallback(fname_base, hyperparameters_id)
 
     # Train the model
     trainer = Trainer(
@@ -465,6 +483,8 @@ def run():
                         no_cuda=args.no_cuda,
                         hyperparameters_id=idx,
                         hyperparameters=hyperparameters,
+                        train_split_usage=args.train_split_usage,
+                        test_split_usage=args.test_split_usage,
                     )
 
             else:
@@ -475,6 +495,8 @@ def run():
                     train_split=args.train_split,
                     test_split=args.test_split,
                     no_cuda=args.no_cuda,
+                    train_split_usage=args.train_split_usage,
+                    test_split_usage=args.test_split_usage,
                 )
                 print(metrics)
 
