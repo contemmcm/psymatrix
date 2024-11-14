@@ -43,7 +43,7 @@ from datasets.iterable_dataset import IterableDataset
 
 
 MAX_TOKENS = 1024
-MAX_EPOCHS = 30
+MAX_EPOCHS = 300
 EARLY_STOPPING_PATIENCE = 3
 SEED = 42
 
