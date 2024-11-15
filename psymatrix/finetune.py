@@ -27,7 +27,6 @@ from typing import Union
 import torch
 from sklearn.metrics import accuracy_score
 from transformers import (
-    AutoConfig,
     AutoModelForSequenceClassification,
     AutoTokenizer,
     EarlyStoppingCallback,
@@ -42,7 +41,7 @@ from datasets.dataset_dict import DatasetDict, IterableDatasetDict
 from datasets.iterable_dataset import IterableDataset
 
 
-MAX_TOKENS = 1024
+DEFAULT_MAX_TOKENS = 1024
 MAX_EPOCHS = 300
 EARLY_STOPPING_PATIENCE = 3
 SEED = 42
@@ -194,32 +193,37 @@ def get_num_labels(
     return num_labels
 
 
-def get_tokenizer_max_length(model_id: str):
+def get_tokenizer_max_length(model_id: str, max_tokens: int):
     """
     Get the maximum length of the tokenizer.
     """
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     tokenizer_max_length = tokenizer.model_max_length
 
-    return min(tokenizer_max_length, MAX_TOKENS)
+    return min(tokenizer_max_length, max_tokens)
 
 
-def get_tokenizer_args(model_id: str):
+def get_tokenizer_args(model_id: str, max_tokens: int):
     """
     Return the best tokenizer arguments for the given model.
     """
     return {
-        "max_length": get_tokenizer_max_length(model_id),
+        "max_length": get_tokenizer_max_length(model_id, max_tokens),
         "truncation": True,
         "padding": "max_length",
     }
 
 
-def tokenize_function(tokenizer, model_id, examples):
+def tokenize_function(tokenizer, model_id, hyperparameters, examples):
     """
     Tokenize the examples for the given job.
     """
-    tokenizer_args = get_tokenizer_args(model_id)
+    if "max_tokens" in hyperparameters:
+        max_tokens = hyperparameters["max_tokens"]
+    else:
+        max_tokens = DEFAULT_MAX_TOKENS
+
+    tokenizer_args = get_tokenizer_args(model_id, max_tokens=max_tokens)
 
     # Tokenize the examples
     tokenized_inputs = tokenizer(examples["text"], **tokenizer_args)
@@ -322,6 +326,7 @@ def finetune(
         tokenize_function,
         tokenizer,
         model_id,
+        hyperparameters,
     )
 
     if train_split_usage < 100:
