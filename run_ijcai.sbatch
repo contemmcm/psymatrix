@@ -21,6 +21,6 @@ module load anaconda3/latest
 
 conda activate psymatrix
 
-python -m psymatrix.finetune -e "ijcai25" --train-split-usage $TRAIN_SPLIT_USAGE --test-split-usage $TEST_SPLIT_USAGE -m "google-bert/bert-base-cased"
+python -m psymatrix.finetune -e "ijcai25" --train-split-usage $TRAIN_SPLIT_USAGE --test-split-usage $TEST_SPLIT_USAGE
 
 conda deactivate
