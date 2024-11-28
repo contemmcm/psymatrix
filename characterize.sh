@@ -3,6 +3,7 @@
 DATASET=$1
 TRAIN_SPLIT=$2
 TEST_SPLIT=$3
+COHMETRIX_BATCH_SIZE=50
 
 check_docker_cohmetrix() {
   IMAGE_NAME="cohmetrix"
@@ -33,10 +34,10 @@ python scripts/feat_psy_textstat.py --name_or_path "$DATASET" --split "$TRAIN_SP
 python scripts/feat_psy_taaco.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT"
 
 if [[ "$IMAGE_EXISTS" -eq 1 ]]; then
-    docker run -it --rm -v `pwd`/data/:/root/data --user $(id -u):$(id -g) \
-    cohmetrix python3 scripts/feat_psy_cohmetrix.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --processes "$CPU_COUNT"
+  docker run -it --rm -v `pwd`/data/:/home/ubuntu/data \
+    cohmetrix python3 scripts/feat_psy_cohmetrix.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --processes "$CPU_COUNT" --batch-size $COHMETRIX_BATCH_SIZE
 else
-    python scripts/feat_psy_cohmetrix.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --processes "$CPU_COUNT"
+  python scripts/feat_psy_cohmetrix.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --processes "$CPU_COUNT" --batch-size $COHMETRIX_BATCH_SIZE
 fi
 
 
@@ -49,5 +50,4 @@ python -m scripts.metafeatures --name_or_path "$DATASET" --split "$TRAIN_SPLIT" 
 python -m scripts.metafeatures --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --feature topic_lda
 python -m scripts.metafeatures --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --feature textstat
 python -m scripts.metafeatures --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --feature taaco
-python -m scripts.metafeatures --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --feature cohmetrix
 python -m scripts.metafeatures --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --feature cohmetrix

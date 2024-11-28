@@ -37,10 +37,10 @@ This will fetch all necessary resources. Ensure that `wget` and `gdown` are inst
 PsyMatrix uses CohMetrix for dataset characterization. The recommended way to install CohMetrix is via Docker. Run the following command to build the Docker image (only tested on Linux):
 
 ```bash
-COHMETRIX_LICENSE=xxxx make cohmetrix
+COHMETRIX_EMAIL=YOUREMAILHERE COHMETRIX_API_KEY=APIKEYHERE make cohmetrix
 ```
 
-Replace `xxxx` with your CohMetrix license key. Please refer to http://cohmetrix.memphis.edu/home and https://github.com/memphis-iis/cohmetrix-issues for more information
+Please refer to http://cohmetrix.memphis.edu/home and https://github.com/memphis-iis/cohmetrix-issues for more information
 
 
 ### Step 3: Characterize the Dataset
