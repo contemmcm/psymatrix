@@ -57,8 +57,7 @@ DEFAULT_TRAINING_ARGS = {
     "lr_scheduler_type": "linear",
     "per_device_train_batch_size": BATCH_SIZE,
     "per_device_eval_batch_size": BATCH_SIZE,
-    "logging_strategy": "steps",
-    "logging_steps": 250,
+    "logging_strategy": "epoch",
     "eval_strategy": "epoch",
     "save_strategy": "epoch",
     "save_total_limit": 1,
@@ -148,6 +147,7 @@ class SaveMetricsCallback(TrainerCallback):
         hyperparameters_id: int = None,
     ):
         self.metrics = []
+        self.train_metrics = []
         self.fname_base = fname_base
         self.is_disabled = False
         self.hyperparameters_id = hyperparameters_id
@@ -175,6 +175,34 @@ class SaveMetricsCallback(TrainerCallback):
 
         with open(fname, "w", encoding="utf8") as f:
             json.dump(self.metrics, f, indent=2)
+
+    def on_log(self, args, state, control, **kwargs):
+        """
+        Save the metrics to a file.
+        """
+        if self.is_disabled:
+            return
+
+        if kwargs and "logs" not in kwargs:
+            return
+
+        metrics = kwargs["logs"]
+
+        if "eval_loss" in metrics:
+            return
+
+        # Adding timestamp to metrics
+        metrics["timestamp"] = time.time()
+
+        self.train_metrics.append(metrics)
+
+        fname = f"{self.fname_base}/train_metrics_all.json"
+
+        # Ensure the output directory exists
+        os.makedirs(os.path.dirname(fname), exist_ok=True)
+
+        with open(fname, "w", encoding="utf8") as f:
+            json.dump(self.train_metrics, f, indent=2)
 
 
 def get_num_labels(
@@ -218,7 +246,7 @@ def tokenize_function(tokenizer, model_id, hyperparameters, examples):
     """
     Tokenize the examples for the given job.
     """
-    if "max_tokens" in hyperparameters:
+    if hyperparameters and "max_tokens" in hyperparameters:
         max_tokens = hyperparameters["max_tokens"]
     else:
         max_tokens = DEFAULT_MAX_TOKENS
@@ -279,6 +307,14 @@ def finetune(
         with open(fname_output, "r", encoding="utf8") as f:
             metrics = json.load(f)
         return metrics
+
+    # Saving hardware information
+    with open(f"{fname_base}/hardware.json", "w", encoding="utf8") as f:
+        json.dump(
+            get_device_info(),
+            f,
+            indent=2,
+        )
 
     dataset = load_dataset(dataset_name_or_path)
 
@@ -434,6 +470,25 @@ def load_hyper_parameters(experiment: str):
     combinations = list(product(*values))
 
     return keys, combinations
+
+
+def get_device_info():
+    if torch.cuda.is_available():
+        return {
+            "device": torch.cuda.get_device_name(0),
+            "device_count": torch.cuda.device_count(),
+        }
+
+    if torch.backends.mps.is_available():
+        return {
+            "device": "mps",
+            "device_count": torch.mps.device_count(),
+        }
+
+    return {
+        "device": "cpu",
+        "device_count": 1,
+    }
 
 
 def run():
