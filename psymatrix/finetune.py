@@ -587,6 +587,9 @@ def run():
                             hyperparameters_id=idx,
                         )
 
+                        # Create directory if it does not exist
+                        os.makedirs(fname_base, exist_ok=True)
+
                         with open(f"{fname_base}/error.txt", "w", encoding="utf8") as f:
                             f.write(str(e))
 
