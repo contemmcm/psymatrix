@@ -366,9 +366,7 @@ def finetune(
             _training_args["per_device_eval_batch_size"] = hyperparameters["batch_size"]
 
         if "fp16" in hyperparameters:
-            _training_args["fp16"] = (
-                True if hyperparameters["fp16"].lower() == "true" else False
-            )
+            _training_args["fp16"] = hyperparameters["fp16"]
 
     training_args = TrainingArguments(
         output_dir=f"data/finetune/{fname_model_base}",
