@@ -20,6 +20,7 @@ from itertools import product
 import json
 import os
 import time
+import traceback
 from functools import partial
 from shutil import rmtree
 from typing import Union
@@ -269,6 +270,33 @@ def compute_metrics_classification(eval_pred):
     return {"accuracy": acc}
 
 
+def get_fname_base(
+    model_id: str,
+    dataset_name_or_path: str,
+    test_split: str = "test",
+    train_split_usage=100,
+    test_split_usage=100,
+    hyperparameters_id: int = None,
+):
+    fname_model_base = os.path.join(
+        dataset_name_or_path,
+        model_id,
+        f"train-{train_split_usage:03d}_test-{test_split_usage:03d}",
+    )
+
+    if hyperparameters_id is not None:
+        fname_model_base = f"{fname_model_base}_hp-{hyperparameters_id:03d}"
+
+    fname_base = os.path.join(
+        "data",
+        "performance",
+        fname_model_base,
+        test_split,
+    )
+
+    return fname_model_base, fname_base
+
+
 def finetune(
     model_id: str,
     dataset_name_or_path: str,
@@ -285,20 +313,13 @@ def finetune(
     """
     Finetune the pre-trained model on the given dataset.
     """
-    fname_model_base = os.path.join(
-        dataset_name_or_path,
-        model_id,
-        f"train-{train_split_usage:03d}_test-{test_split_usage:03d}",
-    )
-
-    if hyperparameters_id is not None:
-        fname_model_base = f"{fname_model_base}_hp-{hyperparameters_id:03d}"
-
-    fname_base = os.path.join(
-        "data",
-        "performance",
-        fname_model_base,
-        test_split,
+    fname_model_base, fname_base = get_fname_base(
+        model_id=model_id,
+        dataset_name_or_path=dataset_name_or_path,
+        test_split=test_split,
+        train_split_usage=train_split_usage,
+        test_split_usage=test_split_usage,
+        hyperparameters_id=hyperparameters_id,
     )
 
     fname_output = os.path.join(fname_base, "metrics.json")
@@ -343,6 +364,11 @@ def finetune(
                 "batch_size"
             ]
             _training_args["per_device_eval_batch_size"] = hyperparameters["batch_size"]
+
+        if "fp16" in hyperparameters:
+            _training_args["fp16"] = (
+                True if hyperparameters["fp16"].lower() == "true" else False
+            )
 
     training_args = TrainingArguments(
         output_dir=f"data/finetune/{fname_model_base}",
@@ -527,6 +553,7 @@ def run():
 
     for model_id in models:
         for dataset_id in datasets:
+
             if hpo:  # Perform grid search over hyper parameters
                 hpo_keys = hpo[0]
                 hpo_values = hpo[1]
@@ -536,18 +563,36 @@ def run():
                     print(
                         f"Finetuning {model_id} on {dataset_id} with hyperparameters: {hyperparameters}"
                     )
-                    metrics = finetune(
-                        model_id,
-                        dataset_id,
-                        train_split=args.train_split,
-                        test_split=args.test_split,
-                        no_cuda=args.no_cuda,
-                        hyperparameters_id=idx,
-                        hyperparameters=hyperparameters,
-                        train_split_usage=args.train_split_usage,
-                        test_split_usage=args.test_split_usage,
-                    )
 
+                    try:
+                        metrics = finetune(
+                            model_id,
+                            dataset_id,
+                            train_split=args.train_split,
+                            test_split=args.test_split,
+                            no_cuda=args.no_cuda,
+                            hyperparameters_id=idx,
+                            hyperparameters=hyperparameters,
+                            train_split_usage=args.train_split_usage,
+                            test_split_usage=args.test_split_usage,
+                        )
+                    except torch.OutOfMemoryError as e:
+
+                        traceback.print_exc()
+
+                        _, fname_base = get_fname_base(
+                            model_id=model_id,
+                            dataset_name_or_path=dataset_id,
+                            test_split=args.test_split,
+                            train_split_usage=args.train_split_usage,
+                            test_split_usage=args.test_split_usage,
+                            hyperparameters_id=idx,
+                        )
+
+                        with open(f"{fname_base}/error.txt", "w", encoding="utf8") as f:
+                            f.write(str(e))
+
+                        continue
             else:
                 print(f"Finetuning {model_id} on {dataset_id}")
                 metrics = finetune(
