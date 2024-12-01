@@ -23,31 +23,32 @@ IS_COHMETRIX_DOCKER_AVAILABLE=$?  # Capture the return value
 #
 # Download the dataset
 #
-python scripts/dump_documents.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT"
+python3 scripts/dump_documents.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT"
 
 #
 # Extract features
 #
-python -m scripts.feat_lang --name_or_path "$DATASET" --split "$TRAIN_SPLIT"
-python scripts/feat_topic_lda.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT"
-python scripts/feat_psy_textstat.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT"
-python scripts/feat_psy_taaco.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT"
+python3 -m scripts.feat_lang --name_or_path "$DATASET" --split "$TRAIN_SPLIT"
+python3 scripts/feat_topic_lda.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT"
+python3 scripts/feat_psy_textstat.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT"
+python3 scripts/feat_psy_taaco.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT"
 
-if [[ "$IMAGE_EXISTS" -eq 1 ]]; then
-  docker run -it --rm -v `pwd`/data/:/home/ubuntu/data \
-    cohmetrix python3 scripts/feat_psy_cohmetrix.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --processes "$CPU_COUNT" --batch-size $COHMETRIX_BATCH_SIZE
-else
-  python scripts/feat_psy_cohmetrix.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --processes "$CPU_COUNT" --batch-size $COHMETRIX_BATCH_SIZE
-fi
+# if [[ "$IMAGE_EXISTS" -eq 1 ]]; then
+#   docker run -it --rm -v `pwd`/data/:/home/ubuntu/data \
+#     cohmetrix python3 scripts/feat_psy_cohmetrix.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --processes "$CPU_COUNT" --batch-size $COHMETRIX_BATCH_SIZE
+# else
+#   python3 scripts/feat_psy_cohmetrix.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --processes "$CPU_COUNT" --batch-size $COHMETRIX_BATCH_SIZE
+# fi
 
+python3 scripts/feat_psy_cohmetrix.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --processes "$CPU_COUNT" --batch-size $COHMETRIX_BATCH_SIZE
 
 #
 # Extract meta-features
 #
-python scripts/feat_mfe.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT"
+python3 scripts/feat_mfe.py --name_or_path "$DATASET" --split "$TRAIN_SPLIT"
 
-python -m scripts.metafeatures --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --feature lang
-python -m scripts.metafeatures --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --feature topic_lda
-python -m scripts.metafeatures --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --feature textstat
-python -m scripts.metafeatures --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --feature taaco
-python -m scripts.metafeatures --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --feature cohmetrix
+python3 -m scripts.metafeatures --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --feature lang
+python3 -m scripts.metafeatures --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --feature topic_lda
+python3 -m scripts.metafeatures --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --feature textstat
+python3 -m scripts.metafeatures --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --feature taaco
+python3 -m scripts.metafeatures --name_or_path "$DATASET" --split "$TRAIN_SPLIT" --feature cohmetrix
