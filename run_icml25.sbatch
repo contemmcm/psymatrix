@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -t 0-96:00:00
+#SBATCH -t 0-168:00:00
 #SBATCH --mem=4G
 #SBATCH --mail-type=END,FAIL,TIME_LIMIT
 #SBATCH -n 1
