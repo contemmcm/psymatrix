@@ -129,6 +129,22 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--train-label-noise",
+    dest="train_label_noise",
+    default=0,
+    type=int,
+    help="The percentage of noise to add to the training labels (0-100).",
+)
+
+parser.add_argument(
+    "--test-label-noise",
+    dest="test_label_noise",
+    default=0,
+    type=int,
+    help="The percentage of noise to add to the test labels (0-100).",
+)
+
+parser.add_argument(
     "--no-cuda",
     dest="no_cuda",
     action="store_true",
@@ -274,8 +290,10 @@ def get_fname_base(
     model_id: str,
     dataset_name_or_path: str,
     test_split: str = "test",
-    train_split_usage=100,
-    test_split_usage=100,
+    train_split_usage: int = 100,
+    test_split_usage: int = 100,
+    train_label_noise: int = 0,
+    test_label_noise: int = 0,
     hyperparameters_id: int = None,
 ):
     fname_model_base = os.path.join(
@@ -283,6 +301,9 @@ def get_fname_base(
         model_id,
         f"train-{train_split_usage:03d}_test-{test_split_usage:03d}",
     )
+
+    if train_label_noise or test_label_noise:
+        fname_model_base = f"{fname_model_base}_train-label-noise-{train_label_noise:03d}_test-label-noise-{test_label_noise:03d}"
 
     if hyperparameters_id is not None:
         fname_model_base = f"{fname_model_base}_hp-{hyperparameters_id:03d}"
@@ -309,9 +330,12 @@ def finetune(
     hyperparameters: dict = None,
     train_split_usage=100,
     test_split_usage=100,
+    train_label_noise: int = 0,
+    test_label_noise: int = 0,
 ):
     """
-    Finetune the pre-trained model on the given dataset.
+    Finetune the pre
+    +--trained model on the given dataset.
     """
     fname_model_base, fname_base = get_fname_base(
         model_id=model_id,
@@ -319,6 +343,8 @@ def finetune(
         test_split=test_split,
         train_split_usage=train_split_usage,
         test_split_usage=test_split_usage,
+        train_label_noise=train_label_noise,
+        test_label_noise=test_label_noise,
         hyperparameters_id=hyperparameters_id,
     )
 
@@ -340,12 +366,11 @@ def finetune(
         )
 
     dataset = load_dataset(dataset_name_or_path)
+    num_labels = get_num_labels(dataset, train_split=train_split, test_split=test_split)
 
     model = AutoModelForSequenceClassification.from_pretrained(
         model_id,
-        num_labels=get_num_labels(
-            dataset, train_split=train_split, test_split=test_split
-        ),
+        num_labels=num_labels,
     )
 
     # Hack to bypass the contiguous error of some models
@@ -362,10 +387,16 @@ def finetune(
             _training_args["learning_rate"] = hyperparameters["learning_rate"]
 
         if "batch_size" in hyperparameters:
-            _training_args["per_device_train_batch_size"] = hyperparameters[
-                "batch_size"
-            ]
-            _training_args["per_device_eval_batch_size"] = hyperparameters["batch_size"]
+
+            if hyperparameters["batch_size"] == "auto":
+                _training_args["auto_find_batch_size"] = True
+            else:
+                _training_args["per_device_train_batch_size"] = hyperparameters[
+                    "batch_size"
+                ]
+                _training_args["per_device_eval_batch_size"] = hyperparameters[
+                    "batch_size"
+                ]
 
         if "fp16" in hyperparameters:
             _training_args["fp16"] = hyperparameters["fp16"]
@@ -403,6 +434,24 @@ def finetune(
             dataset[test_split]
             .shuffle(seed=SEED)
             .select(range(int(test_split_usage * len(dataset[test_split]) / 100)))
+        )
+
+    if train_label_noise:
+        print(f"Adding noise to the training labels: {train_label_noise}%")
+        dataset[train_split] = dataset[train_split].map(
+            lambda x: {
+                "label": _rand_label(x["label"], num_labels, train_label_noise),
+                "text": x["text"],
+            }
+        )
+
+    if test_label_noise:
+        print(f"Adding noise to the test labels: {test_label_noise}%")
+        dataset[test_split] = dataset[test_split].map(
+            lambda x: {
+                "label": _rand_label(x["label"], num_labels, test_label_noise),
+                "text": x["text"],
+            }
         )
 
     train_dataset = dataset[train_split].map(tokenize, batched=True)
@@ -517,6 +566,23 @@ def get_device_info():
     }
 
 
+def _rand_label(current_label, num_labels, noise):
+    """
+    Randomly change the label.
+    """
+    if noise == 0:
+        return current_label
+
+    labels = list(range(num_labels))
+    labels.remove(current_label)
+
+    if torch.rand(1).item() < noise / 100.0:
+        new_label_idx = torch.randint(0, num_labels - 1, (1,)).item()
+        return labels[new_label_idx]
+
+    return current_label
+
+
 def run():
     args = parser.parse_args()
 
@@ -575,6 +641,8 @@ def run():
                             hyperparameters=hyperparameters,
                             train_split_usage=args.train_split_usage,
                             test_split_usage=args.test_split_usage,
+                            train_label_noise=args.train_label_noise,
+                            test_label_noise=args.test_label_noise,
                         )
                     except torch.OutOfMemoryError as e:
 
@@ -586,6 +654,8 @@ def run():
                             test_split=args.test_split,
                             train_split_usage=args.train_split_usage,
                             test_split_usage=args.test_split_usage,
+                            train_label_noise=args.train_label_noise,
+                            test_label_noise=args.test_label_noise,
                             hyperparameters_id=idx,
                         )
 
@@ -603,6 +673,8 @@ def run():
                     no_cuda=args.no_cuda,
                     train_split_usage=args.train_split_usage,
                     test_split_usage=args.test_split_usage,
+                    train_label_noise=args.train_label_noise,
+                    test_label_noise=args.test_label_noise,
                 )
                 print(metrics)
 
