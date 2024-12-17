@@ -125,8 +125,8 @@ class ProgressiveFineTuning:
 
 def run():
     learning_rate = 1e-5
-    per_device_train_batch_size = 128
-    per_device_eval_batch_size = 128
+    per_device_train_batch_size = 16
+    per_device_eval_batch_size = 16
     max_seq_length = 128
 
     hyperparameters = {
