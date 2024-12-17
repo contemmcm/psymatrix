@@ -91,8 +91,12 @@ class ProgressiveFineTuning:
         train_size = int(len(self.dataset[self.train_split]) * dataset_size)
         test_size = int(len(self.dataset[self.test_split]) * dataset_size)
 
-        train_subset = self.train_dataset.select(range(train_size))
-        test_subset = self.test_dataset.select(range(test_size))
+        if 0 < dataset_size < 1:
+            train_subset = self.train_dataset.select(range(train_size))
+            test_subset = self.test_dataset.select(range(test_size))
+        else:
+            train_subset = self.train_dataset
+            test_subset = self.test_dataset
 
         # Create a Trainer instance
         trainer = Trainer(
@@ -125,8 +129,8 @@ class ProgressiveFineTuning:
 
 def run():
     learning_rate = 1e-5
-    per_device_train_batch_size = 16
-    per_device_eval_batch_size = 16
+    per_device_train_batch_size = 8
+    per_device_eval_batch_size = 8
     max_seq_length = 128
 
     hyperparameters = {
