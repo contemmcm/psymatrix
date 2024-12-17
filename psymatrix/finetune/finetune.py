@@ -23,7 +23,6 @@ import time
 import traceback
 from functools import partial
 from shutil import rmtree
-from typing import Union
 
 import torch
 from sklearn.metrics import accuracy_score
@@ -37,10 +36,8 @@ from transformers import (
 )
 
 from datasets import load_dataset
-from datasets.arrow_dataset import Dataset
-from datasets.dataset_dict import DatasetDict, IterableDatasetDict
-from datasets.iterable_dataset import IterableDataset
 
+from psymatrix.finetune.utils import get_num_labels
 
 DEFAULT_MAX_TOKENS = 1024
 MAX_EPOCHS = 300
@@ -220,22 +217,6 @@ class SaveMetricsCallback(TrainerCallback):
 
         with open(fname, "w", encoding="utf8") as f:
             json.dump(self.train_metrics, f, indent=2)
-
-
-def get_num_labels(
-    dataset: Union[DatasetDict, Dataset, IterableDatasetDict, IterableDataset],
-    label_column: str = "label",
-    train_split: str = "train",
-    test_split: str = "test",
-):
-    """
-    Get the number of unique labels in the dataset.
-    """
-    labels = set(dataset[train_split][label_column])
-    labels.update(set(dataset[test_split][label_column]))
-    num_labels = len(labels)
-
-    return num_labels
 
 
 def get_tokenizer_max_length(model_id: str, max_tokens: int):
