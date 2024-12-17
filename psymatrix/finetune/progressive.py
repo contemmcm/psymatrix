@@ -53,6 +53,7 @@ class ProgressiveFineTuning:
         dataset_name_or_path,
         train_split="train",
         test_split="test",
+        hyperparameters=None,
         **kwargs,
     ):
         self.model_id = model_id
@@ -78,7 +79,7 @@ class ProgressiveFineTuning:
             tokenize_function,
             tokenizer,
             self.model_id,
-            None,  # Hyperparameters
+            hyperparameters,
         )
 
         self.train_dataset = self.dataset[train_split].map(self.tokenize, batched=True)
@@ -86,7 +87,7 @@ class ProgressiveFineTuning:
 
         self.save_callback = SaveMetricsCallback()
 
-    def finetune(self, dataset_size: float = 1.0, num_train_epochs: int = 3):
+    def finetune(self, dataset_size: float = 1.0, **kwargs):
         train_size = int(len(self.dataset[self.train_split]) * dataset_size)
         test_size = int(len(self.dataset[self.test_split]) * dataset_size)
 
@@ -96,7 +97,7 @@ class ProgressiveFineTuning:
         # Create a Trainer instance
         trainer = Trainer(
             model=self.model,
-            args=self.get_training_args(num_train_epochs=num_train_epochs),
+            args=self.get_training_args(**kwargs),
             train_dataset=train_subset,
             eval_dataset=test_subset,
             callbacks=[self.save_callback],
@@ -107,14 +108,14 @@ class ProgressiveFineTuning:
 
     def get_training_args(self, **kwargs):
         default_args = {
-            "output_dir": "./results",  # Output directory
-            "evaluation_strategy": "epoch",  # Evaluation during training
-            "save_strategy": "epoch",  # Save the model at the end of each epoch
-            "per_device_train_batch_size": 8,  # Training batch size
-            "per_device_eval_batch_size": 8,  # Evaluation batch size
-            "num_train_epochs": 3,  # Number of training epochs
-            "seed": 42,  # Seed for reproducibility
-            "load_best_model_at_end": False,  # Load the best model at the end of training
+            "evaluation_strategy": "epoch",
+            "save_strategy": "no",
+            "per_device_train_batch_size": 8,
+            "per_device_eval_batch_size": 8,
+            "num_train_epochs": 3,
+            "seed": 42,
+            "load_best_model_at_end": False,
+            "output_dir": "results",
         }
 
         default_args.update(kwargs)
@@ -122,17 +123,39 @@ class ProgressiveFineTuning:
         return TrainingArguments(**default_args)
 
 
-if __name__ == "__main__":
+def run():
+    learning_rate = 1e-5
+    per_device_train_batch_size = 128
+    per_device_eval_batch_size = 128
+    max_seq_length = 128
+
+    hyperparameters = {
+        "max_tokens": max_seq_length,
+    }
+
     ftuner = ProgressiveFineTuning(
         model_id="distilbert/distilbert-base-uncased",
         dataset_name_or_path="PsyMatrix/cls_20newsgroups_SubjectTextVsLabel__BaseDefault",
+        hyperparameters=hyperparameters,
     )
 
-    ftuner.finetune(dataset_size=0.01, num_train_epochs=3)
-    ftuner.finetune(dataset_size=0.02, num_train_epochs=3)
-    ftuner.finetune(dataset_size=0.04, num_train_epochs=3)
-    ftuner.finetune(dataset_size=0.08, num_train_epochs=3)
-    ftuner.finetune(dataset_size=0.16, num_train_epochs=3)
-    ftuner.finetune(dataset_size=0.32, num_train_epochs=3)
-    ftuner.finetune(dataset_size=0.64, num_train_epochs=3)
-    ftuner.finetune(dataset_size=1.00, num_train_epochs=3)
+    for dataset_size in (0.01, 0.02, 0.04, 0.08, 0.16, 0.32, 0.64, 1.00):
+        ftuner.finetune(
+            dataset_size=dataset_size,
+            num_train_epochs=1,
+            learning_rate=learning_rate,
+            per_device_train_batch_size=per_device_train_batch_size,
+            per_device_eval_batch_size=per_device_eval_batch_size,
+        )
+
+    ftuner.finetune(
+        dataset_size=1.0,
+        num_train_epochs=3,
+        learning_rate=learning_rate,
+        per_device_train_batch_size=per_device_train_batch_size,
+        per_device_eval_batch_size=per_device_eval_batch_size,
+    )
+
+
+if __name__ == "__main__":
+    run()
