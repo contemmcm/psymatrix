@@ -105,10 +105,6 @@ class ProgressiveFineTuning:
         # Train the model
         trainer.train()
 
-        # Evaluate the model
-        results = trainer.evaluate()
-        print(f"Results at increment {dataset_size*100}%: {results}")
-
     def get_training_args(self, **kwargs):
         default_args = {
             "output_dir": "./results",  # Output directory
@@ -118,7 +114,7 @@ class ProgressiveFineTuning:
             "per_device_eval_batch_size": 8,  # Evaluation batch size
             "num_train_epochs": 3,  # Number of training epochs
             "seed": 42,  # Seed for reproducibility
-            "load_best_model_at_end": True,  # Load the best model at the end of training
+            "load_best_model_at_end": False,  # Load the best model at the end of training
         }
 
         default_args.update(kwargs)
