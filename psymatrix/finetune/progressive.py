@@ -130,6 +130,9 @@ class SaveMetricsCallback(TrainerCallback):
         self.output_file = os.path.join("results", "progressive", output_file)
         super().__init__()
 
+    def is_output_file_present(self):
+        return os.path.exists(self.output_file)
+
     def on_evaluate(self, args, state, control, metrics=None, **kwargs):
         """
         Save the metrics to a file.
@@ -194,7 +197,7 @@ class ProgressiveFineTuning:
         )
 
     def is_output_file_present(self):
-        return os.path.exists(self.output_file)
+        return self.save_callback.is_output_file_present()
 
     def finetune(self, dataset_size: float = 1.0, **kwargs):
         train_size = int(len(self.dataset[self.train_split]) * dataset_size)
