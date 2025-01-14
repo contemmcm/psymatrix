@@ -24,6 +24,75 @@ from datasets import load_dataset
 
 from psymatrix.finetune.utils import get_num_labels, tokenize_function
 
+MODELS = [
+    "google-bert/bert-large-cased-whole-word-masking",
+    "google-bert/bert-large-uncased-whole-word-masking-finetuned-squad",
+    "google-bert/bert-large-uncased-whole-word-masking",
+    "google-bert/bert-large-uncased",
+    "google-bert/bert-large-cased-whole-word-masking-finetuned-squad",
+    "google-bert/bert-large-cased",
+    "google-bert/bert-base-uncased",
+    "google-bert/bert-base-multilingual-uncased",
+    "google-bert/bert-base-multilingual-cased",
+    "google-bert/bert-base-german-dbmdz-uncased",
+    "google-bert/bert-base-german-dbmdz-cased",
+    "google-bert/bert-base-german-cased",
+    "google-bert/bert-base-chinese",
+    "google-bert/bert-base-cased-finetuned-mrpc",
+    "google-bert/bert-base-cased",
+    "openai-community/gpt2",
+    "openai-community/gpt2-medium",
+    "openai-community/gpt2-large",
+    "openai-community/gpt2-xl",
+    "FacebookAI/roberta-base",
+    "FacebookAI/roberta-large",
+    "FacebookAI/roberta-large-mnli",
+    "FacebookAI/xlm-roberta-base",
+    "FacebookAI/xlm-roberta-large",
+    "FacebookAI/xlm-roberta-large-finetuned-conll02-dutch",
+    "FacebookAI/xlm-roberta-large-finetuned-conll02-spanish",
+    "FacebookAI/xlm-roberta-large-finetuned-conll03-english",
+    "FacebookAI/xlm-roberta-large-finetuned-conll03-german",
+    "facebook/opt-125m",
+    "facebook/opt-350m",
+    "facebook/opt-1.3b",
+    "meta-llama/Llama-3.2-1B",
+    "meta-llama/Llama-3.2-1B-Instruct",
+    "distilbert/distilbert-base-multilingual-cased",
+    "distilbert/distilbert-base-german-cased",
+    "distilbert/distilbert-base-uncased-distilled-squad",
+    "distilbert/distilbert-base-cased-distilled-squad",
+    "distilbert/distilbert-base-cased",
+    "distilbert/distilbert-base-uncased",
+    "distilbert/distilroberta-base",
+    "distilbert/distilgpt2",
+    "distilbert/distilbert-base-uncased-finetuned-sst-2-english",
+    "albert/albert-xlarge-v2",
+    "albert/albert-xxlarge-v2",
+    "albert/albert-xxlarge-v1",
+    "albert/albert-xlarge-v1",
+    "albert/albert-large-v2",
+    "albert/albert-large-v1",
+    "albert/albert-base-v2",
+    "albert/albert-base-v1",
+    "studio-ousia/mluke-large",
+    "studio-ousia/mluke-large-lite",
+    "studio-ousia/mluke-base-lite",
+    "studio-ousia/mluke-base",
+    "studio-ousia/luke-large-finetuned-conll-2003",
+    "studio-ousia/luke-japanese-base",
+    "studio-ousia/luke-japanese-base-lite",
+    "studio-ousia/luke-japanese-large-lite",
+    "studio-ousia/luke-japanese-large",
+    "studio-ousia/mluke-large-lite-finetuned-kbp37",
+    "studio-ousia/mluke-large-lite-finetuned-conll-2003",
+    "studio-ousia/luke-large-lite",
+    "studio-ousia/luke-base-lite",
+    "studio-ousia/luke-large",
+    "studio-ousia/luke-base",
+    "studio-ousia/luke-large-finetuned-tacred",
+    "studio-ousia/luke-large-finetuned-open-entity",
+]
 
 parser = argparse.ArgumentParser(
     description="Finetune a pretrained model on a specific task-dataset."
@@ -119,7 +188,9 @@ class ProgressiveFineTuning:
         self.train_dataset = self.dataset[train_split].map(self.tokenize, batched=True)
         self.test_dataset = self.dataset[test_split].map(self.tokenize, batched=True)
 
-        self.save_callback = SaveMetricsCallback(output_file=f"{model_id}.json")
+        self.save_callback = SaveMetricsCallback(
+            output_file=f"{dataset_name_or_path}/{model_id}/metrics.json"
+        )
 
     def finetune(self, dataset_size: float = 1.0, **kwargs):
         train_size = int(len(self.dataset[self.train_split]) * dataset_size)
@@ -162,31 +233,46 @@ class ProgressiveFineTuning:
 
 
 def run():
+    """
+    Run the progressive fine-tuning experiment.
+    """
     args = parser.parse_args()
 
     learning_rate = 1e-5
     per_device_train_batch_size = 8
     per_device_eval_batch_size = 8
     max_seq_length = 128
+    num_epochs_per_size = 1
 
     hyperparameters = {
         "max_tokens": max_seq_length,
     }
 
-    ftuner = ProgressiveFineTuning(
-        model_id=args.model_id,
-        dataset_name_or_path=args.dataset_id,
-        hyperparameters=hyperparameters,
-    )
+    if not args.model_id:
+        models_ids = MODELS
+    else:
+        models_ids = [args.model_id]
 
-    for dataset_size in (1 / 128, 1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2, 1):
-        ftuner.finetune(
-            dataset_size=dataset_size,
-            num_train_epochs=1,
-            learning_rate=learning_rate,
-            per_device_train_batch_size=per_device_train_batch_size,
-            per_device_eval_batch_size=per_device_eval_batch_size,
+    for model_id in models_ids:
+        ftuner = ProgressiveFineTuning(
+            model_id=model_id,
+            dataset_name_or_path=args.dataset_id,
+            hyperparameters=hyperparameters,
         )
+
+        for dataset_size in (1 / 128, 1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2, 1):
+
+            try:
+                ftuner.finetune(
+                    dataset_size=dataset_size,
+                    num_train_epochs=num_epochs_per_size,
+                    learning_rate=learning_rate,
+                    per_device_train_batch_size=per_device_train_batch_size,
+                    per_device_eval_batch_size=per_device_eval_batch_size,
+                )
+            except Exception as e:
+                print(f"Error: {e}")
+                continue
 
 
 if __name__ == "__main__":
