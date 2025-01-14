@@ -1,9 +1,16 @@
+"""
+Usage:
+
+$ python -m psymatrix.finetune.progressive -m "distilbert/distilbert-base-uncased" \
+  -d "contemmcm/cls_amazonreviews2013_ReviewsummaryReviewtextVsReviewscore__ArtsFull"
+"""
+
+import argparse
 import json
 import time
+import os
 
 from functools import partial
-
-import numpy as np
 
 from transformers import (
     AutoModelForSequenceClassification,
@@ -18,6 +25,29 @@ from datasets import load_dataset
 from psymatrix.finetune.utils import get_num_labels, tokenize_function
 
 
+parser = argparse.ArgumentParser(
+    description="Finetune a pretrained model on a specific task-dataset."
+)
+
+parser.add_argument(
+    "-m",
+    "--model",
+    dest="model_id",
+    type=str,
+    help="The pre-trained model ID. Overwrites model if used in conjunction with --experiment. E.g., 'google/bert-base-cased'.",
+    required=False,
+)
+
+parser.add_argument(
+    "-d",
+    "--dataset",
+    dest="dataset_id",
+    type=str,
+    help="The name or path of the dataset. Overwrites datasets if used in conjunction with --experiment. E.g., 'SetFit/20_newsgroups'.",
+    required=False,
+)
+
+
 class SaveMetricsCallback(TrainerCallback):
     """
     Callback to save the metrics to
@@ -25,8 +55,10 @@ class SaveMetricsCallback(TrainerCallback):
 
     def __init__(
         self,
+        output_file="metrics.json",
     ):
         self.metrics = []
+        self.output_file = os.path.join("results", "progressive", output_file)
         super().__init__()
 
     def on_evaluate(self, args, state, control, metrics=None, **kwargs):
@@ -38,9 +70,10 @@ class SaveMetricsCallback(TrainerCallback):
 
         self.metrics.append(metrics)
 
-        fname = "metrics.json"
+        fname = self.output_file
 
         # Ensure the output directory exists
+        os.makedirs(os.path.dirname(fname), exist_ok=True)
 
         with open(fname, "w", encoding="utf8") as f:
             json.dump(self.metrics, f, indent=2)
@@ -86,7 +119,7 @@ class ProgressiveFineTuning:
         self.train_dataset = self.dataset[train_split].map(self.tokenize, batched=True)
         self.test_dataset = self.dataset[test_split].map(self.tokenize, batched=True)
 
-        self.save_callback = SaveMetricsCallback()
+        self.save_callback = SaveMetricsCallback(output_file=f"{model_id}.json")
 
     def finetune(self, dataset_size: float = 1.0, **kwargs):
         train_size = int(len(self.dataset[self.train_split]) * dataset_size)
@@ -129,6 +162,8 @@ class ProgressiveFineTuning:
 
 
 def run():
+    args = parser.parse_args()
+
     learning_rate = 1e-5
     per_device_train_batch_size = 8
     per_device_eval_batch_size = 8
@@ -139,12 +174,12 @@ def run():
     }
 
     ftuner = ProgressiveFineTuning(
-        model_id="distilbert/distilbert-base-uncased",
-        dataset_name_or_path="contemmcm/cls_amazonreviews2013_ReviewsummaryReviewtextVsReviewscore__ArtsFull",
+        model_id=args.model_id,
+        dataset_name_or_path=args.dataset_id,
         hyperparameters=hyperparameters,
     )
 
-    for dataset_size in np.linspace(0.01, 1.0, 50):
+    for dataset_size in (1 / 128, 1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2, 1):
         ftuner.finetune(
             dataset_size=dataset_size,
             num_train_epochs=1,
@@ -152,15 +187,6 @@ def run():
             per_device_train_batch_size=per_device_train_batch_size,
             per_device_eval_batch_size=per_device_eval_batch_size,
         )
-
-    # Go for more epochs with the full dataset
-    ftuner.finetune(
-        dataset_size=1.0,
-        num_train_epochs=3,
-        learning_rate=learning_rate,
-        per_device_train_batch_size=per_device_train_batch_size,
-        per_device_eval_batch_size=per_device_eval_batch_size,
-    )
 
 
 if __name__ == "__main__":
