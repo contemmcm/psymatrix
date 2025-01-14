@@ -3,6 +3,7 @@ import time
 
 from functools import partial
 
+import numpy as np
 
 from transformers import (
     AutoModelForSequenceClassification,
@@ -139,11 +140,11 @@ def run():
 
     ftuner = ProgressiveFineTuning(
         model_id="distilbert/distilbert-base-uncased",
-        dataset_name_or_path="PsyMatrix/cls_20newsgroups_SubjectTextVsLabel__BaseDefault",
+        dataset_name_or_path="contemmcm/cls_amazonreviews2013_ReviewsummaryReviewtextVsReviewscore__ArtsFull",
         hyperparameters=hyperparameters,
     )
 
-    for dataset_size in (0.01, 0.02, 0.04, 0.08, 0.16, 0.32, 0.64, 1.00):
+    for dataset_size in np.linspace(0.01, 1.0, 50):
         ftuner.finetune(
             dataset_size=dataset_size,
             num_train_epochs=1,
@@ -152,6 +153,7 @@ def run():
             per_device_eval_batch_size=per_device_eval_batch_size,
         )
 
+    # Go for more epochs with the full dataset
     ftuner.finetune(
         dataset_size=1.0,
         num_train_epochs=3,

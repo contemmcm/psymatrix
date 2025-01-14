@@ -238,6 +238,10 @@ def save_dataset(ds, output_name, split, label_col):
 
 
 def _int_or_float(value):
+
+    if isinstance(value, (int, float)):
+        return value
+
     try:
         return int(value)
     except ValueError:
