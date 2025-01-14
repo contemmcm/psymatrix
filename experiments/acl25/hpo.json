@@ -1,6 +1,6 @@
 {
     "learning_rate": [1e-5],
-    "batch_size": ["auto"],
+    "batch_size": [8],
     "max_token_size": [128],
     "fp16": [true]
 }
