@@ -187,10 +187,14 @@ class ProgressiveFineTuning:
 
         self.train_dataset = self.dataset[train_split].map(self.tokenize, batched=True)
         self.test_dataset = self.dataset[test_split].map(self.tokenize, batched=True)
+        self.output_file = f"{dataset_name_or_path}/{model_id}/metrics.json"
 
         self.save_callback = SaveMetricsCallback(
-            output_file=f"{dataset_name_or_path}/{model_id}/metrics.json"
+            output_file=self.output_file,
         )
+
+    def is_output_file_present(self):
+        return os.path.exists(self.output_file)
 
     def finetune(self, dataset_size: float = 1.0, **kwargs):
         train_size = int(len(self.dataset[self.train_split]) * dataset_size)
@@ -259,6 +263,10 @@ def run():
             dataset_name_or_path=args.dataset_id,
             hyperparameters=hyperparameters,
         )
+
+        if ftuner.is_output_file_present():
+            print(f"Skipping {model_id}...")
+            continue
 
         for dataset_size in (1 / 128, 1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2, 1):
 
