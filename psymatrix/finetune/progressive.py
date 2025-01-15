@@ -38,7 +38,6 @@ MODELS = [
     "google-bert/bert-base-german-dbmdz-cased",
     "google-bert/bert-base-german-cased",
     "google-bert/bert-base-chinese",
-    "google-bert/bert-base-cased-finetuned-mrpc",
     "google-bert/bert-base-cased",
     "openai-community/gpt2",
     "openai-community/gpt2-medium",
