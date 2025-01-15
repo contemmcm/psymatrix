@@ -64,7 +64,6 @@ MODELS = [
     "distilbert/distilbert-base-uncased",
     "distilbert/distilroberta-base",
     "distilbert/distilgpt2",
-    "distilbert/distilbert-base-uncased-finetuned-sst-2-english",
     "albert/albert-xlarge-v2",
     "albert/albert-xxlarge-v2",
     "albert/albert-xxlarge-v1",
@@ -77,19 +76,14 @@ MODELS = [
     "studio-ousia/mluke-large-lite",
     "studio-ousia/mluke-base-lite",
     "studio-ousia/mluke-base",
-    "studio-ousia/luke-large-finetuned-conll-2003",
     "studio-ousia/luke-japanese-base",
     "studio-ousia/luke-japanese-base-lite",
     "studio-ousia/luke-japanese-large-lite",
     "studio-ousia/luke-japanese-large",
-    "studio-ousia/mluke-large-lite-finetuned-kbp37",
-    "studio-ousia/mluke-large-lite-finetuned-conll-2003",
     "studio-ousia/luke-large-lite",
     "studio-ousia/luke-base-lite",
     "studio-ousia/luke-large",
     "studio-ousia/luke-base",
-    "studio-ousia/luke-large-finetuned-tacred",
-    "studio-ousia/luke-large-finetuned-open-entity",
 ]
 
 parser = argparse.ArgumentParser(
