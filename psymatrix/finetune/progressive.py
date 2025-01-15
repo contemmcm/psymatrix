@@ -259,6 +259,7 @@ def run():
         models_ids = [args.model_id]
 
     for model_id in models_ids:
+        print(f"Running {model_id}...")
         try:
             ftuner = ProgressiveFineTuning(
                 model_id=model_id,
