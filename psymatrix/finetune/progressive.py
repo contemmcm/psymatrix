@@ -45,7 +45,6 @@ MODELS = [
     "openai-community/gpt2-xl",
     "FacebookAI/roberta-base",
     "FacebookAI/roberta-large",
-    "FacebookAI/roberta-large-mnli",
     "FacebookAI/xlm-roberta-base",
     "FacebookAI/xlm-roberta-large",
     "FacebookAI/xlm-roberta-large-finetuned-conll02-dutch",
