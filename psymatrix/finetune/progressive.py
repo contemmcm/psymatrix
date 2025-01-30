@@ -1,7 +1,7 @@
 """
 Usage:
 
-$ python -m psymatrix.finetune.progressive -m "distilbert/distilbert-base-uncased" \
+$ python -m psymatrix.finetune.progressive -m "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B" \
   -d "contemmcm/cls_amazonreviews2013_ReviewsummaryReviewtextVsReviewscore__ArtsFull"
 """
 
@@ -171,6 +171,8 @@ class ProgressiveFineTuning:
         if tokenizer.pad_token is None:
             tokenizer.pad_token = tokenizer.eos_token
             tokenizer.pad_token_id = tokenizer.eos_token_id
+
+        if self.model.config.pad_token_id is None:
             self.model.config.pad_token_id = tokenizer.pad_token_id
 
         self.tokenize = partial(
@@ -280,7 +282,7 @@ def run():
                 )
             except Exception as e:
                 print(f"Error: {e}")
-                continue
+                # continue
 
 
 if __name__ == "__main__":
