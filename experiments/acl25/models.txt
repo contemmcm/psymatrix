@@ -57,3 +57,4 @@ studio-ousia/luke-large-lite
 studio-ousia/luke-base-lite
 studio-ousia/luke-large
 studio-ousia/luke-base
+deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
