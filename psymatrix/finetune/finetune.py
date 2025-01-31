@@ -39,13 +39,13 @@ from datasets import load_dataset
 
 from psymatrix.finetune.utils import get_num_labels
 
-DEFAULT_MAX_TOKENS = 1024
+DEFAULT_MAX_TOKENS = 128
 MAX_EPOCHS = 300
 EARLY_STOPPING_PATIENCE = 3
 SEED = 42
 
 BATCH_SIZE = 8
-LEARNING_RATE = 2.5e-6
+LEARNING_RATE = 1e-5
 
 DEFAULT_TRAINING_ARGS = {
     "optim": "adamw_torch",
