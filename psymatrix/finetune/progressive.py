@@ -194,6 +194,7 @@ class ProgressiveFineTuning:
         return self.save_callback.is_output_file_present()
 
     def finetune(self, dataset_size: float = 1.0, **kwargs):
+
         train_size = int(len(self.dataset[self.train_split]) * dataset_size)
         test_size = int(len(self.dataset[self.test_split]) * dataset_size)
 
@@ -213,8 +214,10 @@ class ProgressiveFineTuning:
             callbacks=[self.save_callback],
         )
 
-        # Train the model
-        trainer.train()
+        if dataset_size == 0:
+            trainer.evaluate()  # Save the metrics before any training
+        else:
+            trainer.train()
 
     def get_training_args(self, **kwargs):
         default_args = {
@@ -270,7 +273,17 @@ def run():
             print(f"Skipping {model_id}...")
             continue
 
-        for dataset_size in (1 / 128, 1 / 64, 1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2, 1):
+        for dataset_size in (
+            0,
+            1 / 128,
+            1 / 64,
+            1 / 32,
+            1 / 16,
+            1 / 8,
+            1 / 4,
+            1 / 2,
+            1,
+        ):
 
             try:
                 ftuner.finetune(
