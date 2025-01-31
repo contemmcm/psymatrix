@@ -396,6 +396,9 @@ def finetune(
         model.config.pad_token_id = tokenizer.pad_token_id
         # model.resize_token_embeddings(len(tokenizer))
 
+    if model.config.pad_token_id is None:
+        model.config.pad_token_id = tokenizer.pad_token_id
+
     tokenize = partial(
         tokenize_function,
         tokenizer,
