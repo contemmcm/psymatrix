@@ -1,7 +1,10 @@
 """
 Usage:
 
-$ python -m psymatrix.finetune.progressive -m "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B" \
+$ python -m psymatrix.finetune.progressive -e "acl25" \
+    -d "contemmcm/cls_amazonreviews2013_ReviewsummaryReviewtextVsReviewscore__ArtsFull"
+
+$ python -m psymatrix.finetune.progressive -m "meta-llama/Llama-3.2-1B" \
   -d "contemmcm/cls_amazonreviews2013_ReviewsummaryReviewtextVsReviewscore__ArtsFull"
 """
 
@@ -23,68 +26,7 @@ from transformers import (
 from datasets import load_dataset
 
 from psymatrix.finetune.utils import get_num_labels, tokenize_function
-
-MODELS = [
-    "google-bert/bert-large-cased-whole-word-masking",
-    "google-bert/bert-large-uncased-whole-word-masking-finetuned-squad",
-    "google-bert/bert-large-uncased-whole-word-masking",
-    "google-bert/bert-large-uncased",
-    "google-bert/bert-large-cased-whole-word-masking-finetuned-squad",
-    "google-bert/bert-large-cased",
-    "google-bert/bert-base-uncased",
-    "google-bert/bert-base-multilingual-uncased",
-    "google-bert/bert-base-multilingual-cased",
-    "google-bert/bert-base-german-dbmdz-uncased",
-    "google-bert/bert-base-german-dbmdz-cased",
-    "google-bert/bert-base-german-cased",
-    "google-bert/bert-base-chinese",
-    "google-bert/bert-base-cased",
-    "openai-community/gpt2",
-    "openai-community/gpt2-medium",
-    "openai-community/gpt2-large",
-    "openai-community/gpt2-xl",
-    "FacebookAI/roberta-base",
-    "FacebookAI/roberta-large",
-    "FacebookAI/xlm-roberta-base",
-    "FacebookAI/xlm-roberta-large",
-    "FacebookAI/xlm-roberta-large-finetuned-conll02-dutch",
-    "FacebookAI/xlm-roberta-large-finetuned-conll02-spanish",
-    "FacebookAI/xlm-roberta-large-finetuned-conll03-english",
-    "FacebookAI/xlm-roberta-large-finetuned-conll03-german",
-    "facebook/opt-125m",
-    "facebook/opt-350m",
-    "facebook/opt-1.3b",
-    "meta-llama/Llama-3.2-1B",
-    "meta-llama/Llama-3.2-1B-Instruct",
-    "distilbert/distilbert-base-multilingual-cased",
-    "distilbert/distilbert-base-german-cased",
-    "distilbert/distilbert-base-uncased-distilled-squad",
-    "distilbert/distilbert-base-cased-distilled-squad",
-    "distilbert/distilbert-base-cased",
-    "distilbert/distilbert-base-uncased",
-    "distilbert/distilroberta-base",
-    "distilbert/distilgpt2",
-    "albert/albert-xlarge-v2",
-    "albert/albert-xxlarge-v2",
-    "albert/albert-xxlarge-v1",
-    "albert/albert-xlarge-v1",
-    "albert/albert-large-v2",
-    "albert/albert-large-v1",
-    "albert/albert-base-v2",
-    "albert/albert-base-v1",
-    "studio-ousia/mluke-large",
-    "studio-ousia/mluke-large-lite",
-    "studio-ousia/mluke-base-lite",
-    "studio-ousia/mluke-base",
-    "studio-ousia/luke-japanese-base",
-    "studio-ousia/luke-japanese-base-lite",
-    "studio-ousia/luke-japanese-large-lite",
-    "studio-ousia/luke-japanese-large",
-    "studio-ousia/luke-large-lite",
-    "studio-ousia/luke-base-lite",
-    "studio-ousia/luke-large",
-    "studio-ousia/luke-base",
-]
+from psymatrix.experiments import load_models
 
 parser = argparse.ArgumentParser(
     description="Finetune a pretrained model on a specific task-dataset."
@@ -105,6 +47,15 @@ parser.add_argument(
     dest="dataset_id",
     type=str,
     help="The name or path of the dataset. Overwrites datasets if used in conjunction with --experiment. E.g., 'SetFit/20_newsgroups'.",
+    required=False,
+)
+
+parser.add_argument(
+    "-e",
+    "--experiment",
+    dest="experiment_id",
+    type=str,
+    help="The name of the experiment. E.g., 'finetune'.",
     required=False,
 )
 
@@ -252,10 +203,12 @@ def run():
         "max_tokens": max_seq_length,
     }
 
-    if not args.model_id:
-        models_ids = MODELS
-    else:
+    if args.experiment_id:
+        models_ids = load_models(args.experiment_id)
+    elif args.model_id:
         models_ids = [args.model_id]
+    else:
+        raise ValueError("Please provide an experiment ID or model ID.")
 
     for model_id in models_ids:
         print(f"Running {model_id}...")
