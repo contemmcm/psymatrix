@@ -198,6 +198,7 @@ def run():
     per_device_eval_batch_size = 8
     max_seq_length = 128
     num_epochs_per_size = 1
+    fp16 = True
 
     hyperparameters = {
         "max_tokens": max_seq_length,
@@ -245,6 +246,7 @@ def run():
                     learning_rate=learning_rate,
                     per_device_train_batch_size=per_device_train_batch_size,
                     per_device_eval_batch_size=per_device_eval_batch_size,
+                    fp16=fp16,
                 )
             except Exception as e:
                 print(f"Error: {e}")
