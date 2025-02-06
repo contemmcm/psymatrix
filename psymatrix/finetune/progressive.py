@@ -133,18 +133,28 @@ class ProgressiveFineTuning:
             hyperparameters,
         )
 
-        self.train_dataset = self.dataset[train_split].map(self.tokenize, batched=True)
-        self.test_dataset = self.dataset[test_split].map(self.tokenize, batched=True)
+        self.train_dataset = None
+        self.test_dataset = None
         self.output_file = f"{dataset_name_or_path}/{model_id}/metrics.json"
 
         self.save_callback = SaveMetricsCallback(
             output_file=self.output_file,
         )
 
+    def _tokenize_datasets(self):
+        self.train_dataset = self.dataset[train_split].map(self.tokenize, batched=True)
+        self.test_dataset = self.dataset[test_split].map(self.tokenize, batched=True)
+    
+    def _is_tokenized(self):
+        return self.train_dataset is not None and self.test_dataset is not None
+
     def is_output_file_present(self):
         return self.save_callback.is_output_file_present()
 
     def finetune(self, dataset_size: float = 1.0, **kwargs):
+
+        if not self._is_tokenized():
+            self._tokenize_datasets()
 
         train_size = int(len(self.dataset[self.train_split]) * dataset_size)
         test_size = int(len(self.dataset[self.test_split]) * dataset_size)
