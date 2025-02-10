@@ -61,35 +61,3 @@ def tokenize_function(tokenizer, model_id, hyperparameters, examples):
     tokenized_inputs = tokenizer(examples["text"], **tokenizer_args)
 
     return tokenized_inputs
-
-
-def tokenize_function_qa(tokenizer, model_id, hyperparameters, examples):
-    """
-    Tokenize the examples for the given job.
-    """
-    if hyperparameters and "max_tokens" in hyperparameters:
-        max_tokens = hyperparameters["max_tokens"]
-    else:
-        max_tokens = DEFAULT_MAX_TOKENS
-
-    tokenizer_args = {
-        "truncation": True,
-        "max_length": 384,
-        "stride": 128,
-        "padding": "max_length",
-        "return_tensors": "pt",
-    }
-
-    # Tokenize the examples
-    tokenized_examples = tokenizer(
-        examples["question"], examples["context"], **tokenizer_args
-    )
-    start_positions = examples["answer_start"]
-    end_positions = [
-        answer_start + len(answer)
-        for answer_start, answer in zip(examples["answer_start"], examples["answer"])
-    ]
-    tokenized_examples["start_positions"] = start_positions
-    tokenized_examples["end_positions"] = end_positions
-
-    return tokenized_examples

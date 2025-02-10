@@ -12,6 +12,10 @@ import os
 
 from functools import partial
 
+import numpy as np
+
+from sklearn.metrics import f1_score
+
 from transformers import (
     AutoModelForQuestionAnswering,
     Trainer,
@@ -22,10 +26,6 @@ from transformers import (
 
 from datasets import load_dataset
 
-from psymatrix.finetune.utils import (
-    get_num_labels,
-    tokenize_function_qa as tokenize_function,
-)
 from psymatrix.experiments import load_models
 
 parser = argparse.ArgumentParser(
@@ -58,6 +58,84 @@ parser.add_argument(
     help="The name of the experiment. E.g., 'finetune'.",
     required=False,
 )
+
+
+def compute_metrics_qa(eval_pred):
+    """
+    Compute the metrics for the question answering task.
+    """
+    (logits_start, logits_stop), (labels_start, labels_stop) = eval_pred
+
+    # Top-1 accuracy
+    predictions_start = logits_start.argmax(axis=-1)
+    predictions_stop = logits_stop.argmax(axis=-1)
+
+    # Compute F1-score
+    f1 = f1_score(
+        np.concatenate([labels_start, labels_stop]),  # Flatten both labels
+        np.concatenate([predictions_start, predictions_stop]),  # Flatten predictions
+        average="weighted",
+    )
+
+    # Compute Exact Match (both start and stop must match)
+    exact_match = np.mean(
+        (predictions_start == labels_start) & (predictions_stop == labels_stop)
+    )
+
+    return {"exact_match": exact_match, "f1": f1}
+
+
+def preprocess_function(tokenizer, examples):
+    questions = [q.strip() for q in examples["question"]]
+    inputs = tokenizer(
+        questions,
+        examples["context"],
+        max_length=384,
+        truncation="only_second",
+        return_offsets_mapping=True,
+        padding="max_length",
+    )
+
+    offset_mapping = inputs.pop("offset_mapping")
+    answers = examples["answer"]
+    start_positions = []
+    end_positions = []
+
+    for i, offset in enumerate(offset_mapping):
+        answer = answers[i] or ""
+        # start_char = answer["answer_start"][0]
+        start_char = examples["answer_start"][i]
+        end_char = start_char + len(answer)
+        sequence_ids = inputs.sequence_ids(i)
+
+        # Find the start and end of the context
+        idx = 0
+        while sequence_ids[idx] != 1:
+            idx += 1
+        context_start = idx
+        while sequence_ids[idx] == 1:
+            idx += 1
+        context_end = idx - 1
+
+        # If the answer is not fully inside the context, label it (0, 0)
+        if offset[context_start][0] > end_char or offset[context_end][1] < start_char:
+            start_positions.append(0)
+            end_positions.append(0)
+        else:
+            # Otherwise it's the start and end token positions
+            idx = context_start
+            while idx <= context_end and offset[idx][0] <= start_char:
+                idx += 1
+            start_positions.append(idx - 1)
+
+            idx = context_end
+            while idx >= context_start and offset[idx][1] >= end_char:
+                idx -= 1
+            end_positions.append(idx + 1)
+
+    inputs["start_positions"] = start_positions
+    inputs["end_positions"] = end_positions
+    return inputs
 
 
 class SaveMetricsCallback(TrainerCallback):
@@ -110,10 +188,9 @@ class ProgressiveFineTuning:
         self.test_split = test_split
 
         self.dataset = load_dataset(dataset_name_or_path).shuffle(seed=42)
-        self.num_labels = get_num_labels(self.dataset)
+        # self.num_labels = get_num_labels(self.dataset)
         self.model = AutoModelForQuestionAnswering.from_pretrained(
             model_id,
-            num_labels=self.num_labels,
         )
 
         # Tokenizer
@@ -127,10 +204,8 @@ class ProgressiveFineTuning:
             self.model.config.pad_token_id = tokenizer.pad_token_id
 
         self.tokenize = partial(
-            tokenize_function,
+            preprocess_function,
             tokenizer,
-            self.model_id,
-            hyperparameters,
         )
 
         self.train_dataset = self.dataset[train_split].map(self.tokenize, batched=True)
@@ -163,6 +238,7 @@ class ProgressiveFineTuning:
             train_dataset=train_subset,
             eval_dataset=test_subset,
             callbacks=[self.save_callback],
+            compute_metrics=compute_metrics_qa,
         )
 
         if dataset_size == 0:
@@ -213,15 +289,12 @@ def run():
 
     for model_id in models_ids:
         print(f"Running {model_id}...")
-        try:
-            ftuner = ProgressiveFineTuning(
-                model_id=model_id,
-                dataset_name_or_path=args.dataset_id,
-                hyperparameters=hyperparameters,
-            )
-        except Exception as e:
-            print(f"Error: {e}")
-            continue
+
+        ftuner = ProgressiveFineTuning(
+            model_id=model_id,
+            dataset_name_or_path=args.dataset_id,
+            hyperparameters=hyperparameters,
+        )
 
         if ftuner.is_output_file_present():
             print(f"Skipping {model_id}...")
