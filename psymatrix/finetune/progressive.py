@@ -14,7 +14,8 @@ import time
 import os
 
 from functools import partial
-
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import f1_score
 from transformers import (
     AutoModelForSequenceClassification,
     Trainer,
@@ -58,6 +59,19 @@ parser.add_argument(
     help="The name of the experiment. E.g., 'finetune'.",
     required=False,
 )
+
+
+def compute_metrics_classification(eval_pred):
+    """
+    Compute the metrics for the classification task.
+    """
+    logits, labels = eval_pred
+    predictions = logits.argmax(axis=-1)  # Top-1 accuracy
+    acc = accuracy_score(labels, predictions)
+    f1_micro = f1_score(labels, predictions, average="micro")
+    f1_macro = f1_score(labels, predictions, average="macro")
+    
+    return {"accuracy": acc, "f1_micro": f1_micro, "f1_macro": f1_macro}
 
 
 class SaveMetricsCallback(TrainerCallback):
@@ -176,6 +190,7 @@ class ProgressiveFineTuning:
             train_dataset=train_subset,
             eval_dataset=test_subset,
             callbacks=[self.save_callback],
+            compute_metrics=compute_metrics_classification,
         )
 
         if dataset_size == 0:
