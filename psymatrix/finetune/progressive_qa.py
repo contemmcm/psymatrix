@@ -290,11 +290,15 @@ def run():
     for model_id in models_ids:
         print(f"Running {model_id}...")
 
-        ftuner = ProgressiveFineTuning(
-            model_id=model_id,
-            dataset_name_or_path=args.dataset_id,
-            hyperparameters=hyperparameters,
-        )
+        try:
+            ftuner = ProgressiveFineTuning(
+                model_id=model_id,
+                dataset_name_or_path=args.dataset_id,
+                hyperparameters=hyperparameters,
+            )
+        except Exception as e:
+            print(f"Error: {e}")
+            continue
 
         if ftuner.is_output_file_present():
             print(f"Skipping {model_id}...")
