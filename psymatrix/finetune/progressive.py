@@ -4,8 +4,18 @@ Usage:
 $ python -m psymatrix.finetune.progressive -e "acl25" \
     -d "contemmcm/cls_amazonreviews2013_ReviewsummaryReviewtextVsReviewscore__ArtsFull"
 
-$ python -m psymatrix.finetune.progressive -m "meta-llama/Llama-3.2-1B" \
-  -d "contemmcm/cls_amazonreviews2013_ReviewsummaryReviewtextVsReviewscore__ArtsFull"
+$ python -m psymatrix.finetune.progressive -m "google-bert/bert-base-cased" \
+  -d "fancyzhx/dbpedia_14" -i "content"
+
+$ python -m psymatrix.finetune.progressive -m "google-bert/bert-base-cased" \
+  -d "odegiber/hate_speech18"
+
+$ python -m psymatrix.finetune.progressive -m "google-bert/bert-base-cased" \
+  -d "stanfordnlp/snli" --input-format "Premise: {premise}\nHypothesis: {hypothesis}"
+
+$ python -m psymatrix.finetune.progressive -m "google-bert/bert-base-cased" \
+  -d "community-datasets/yahoo_answers_topics" -t "topic" \
+  --input-format "[QUESTION]\\n{question_title}\\n{question_content}\\n[BEST ANSWER]\\n{best_answer}"
 """
 
 import argparse
@@ -60,6 +70,34 @@ parser.add_argument(
     required=False,
 )
 
+parser.add_argument(
+    "-i",
+    "--input-col",
+    dest="input_col",
+    type=str,
+    help="The name of the input column. E.g., 'text'.",
+    required=False,
+    default="text",
+)
+
+parser.add_argument(
+    "-t",
+    "--target-col",
+    dest="target_col",
+    type=str,
+    help="The name of the target column. E.g., 'label'.",
+    default="label",
+    required=False,
+)
+
+parser.add_argument(
+    "--input-format",
+    dest="input_format",
+    type=str,
+    help="The combining format of the input columns. E.g., '{question}\n{response}'.",
+    required=False,
+)
+
 
 def compute_metrics_classification(eval_pred):
     """
@@ -70,7 +108,6 @@ def compute_metrics_classification(eval_pred):
     acc = accuracy_score(labels, predictions)
     f1_micro = f1_score(labels, predictions, average="micro")
     f1_macro = f1_score(labels, predictions, average="macro")
-    
     return {"accuracy": acc, "f1_micro": f1_micro, "f1_macro": f1_macro}
 
 
@@ -123,8 +160,12 @@ class ProgressiveFineTuning:
         self.train_split = train_split
         self.test_split = test_split
 
-        self.dataset = load_dataset(dataset_name_or_path).shuffle(seed=42)
-        self.num_labels = get_num_labels(self.dataset)
+        self.dataset = load_dataset(
+            dataset_name_or_path, trust_remote_code=True
+        ).shuffle(seed=42)
+        self.num_labels = get_num_labels(
+            self.dataset, label_column=kwargs.get("target_col")
+        )
         self.model = AutoModelForSequenceClassification.from_pretrained(
             model_id,
             num_labels=self.num_labels,
@@ -145,7 +186,11 @@ class ProgressiveFineTuning:
             tokenizer,
             self.model_id,
             hyperparameters,
+            input_col=kwargs.get("input_col"),
+            input_format=kwargs.get("input_format"),
         )
+
+        self.target_col = kwargs.get("target_col")
 
         self.train_split = train_split
         self.test_split = test_split
@@ -159,9 +204,25 @@ class ProgressiveFineTuning:
         )
 
     def _tokenize_datasets(self):
-        self.train_dataset = self.dataset[self.train_split].map(self.tokenize, batched=True)
-        self.test_dataset = self.dataset[self.test_split].map(self.tokenize, batched=True)
-    
+        self.train_dataset = self.dataset[self.train_split].map(
+            self.tokenize, batched=True
+        )
+        self.test_dataset = self.dataset[self.test_split].map(
+            self.tokenize, batched=True
+        )
+
+        if self.target_col != "label":
+            self.train_dataset = self.train_dataset.rename_column(
+                self.target_col, "label"
+            )
+            self.test_dataset = self.test_dataset.rename_column(
+                self.target_col, "label"
+            )
+
+        # Remove rows with label = -1
+        self.train_dataset = self.train_dataset.filter(lambda x: x["label"] >= 0)
+        self.test_dataset = self.test_dataset.filter(lambda x: x["label"] >= 0)
+
     def _is_tokenized(self):
         return self.train_dataset is not None and self.test_dataset is not None
 
@@ -208,6 +269,8 @@ class ProgressiveFineTuning:
             "seed": 42,
             "load_best_model_at_end": False,
             "output_dir": "results",
+            # disable cuda
+            # "no_cuda": True,
         }
 
         default_args.update(kwargs)
@@ -246,6 +309,9 @@ def run():
                 model_id=model_id,
                 dataset_name_or_path=args.dataset_id,
                 hyperparameters=hyperparameters,
+                input_col=args.input_col,
+                target_col=args.target_col,
+                input_format=args.input_format,
             )
         except Exception as e:
             print(f"Error: {e}")

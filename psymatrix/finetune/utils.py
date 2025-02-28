@@ -1,3 +1,5 @@
+import re
+
 from typing import Union
 
 from datasets.arrow_dataset import Dataset
@@ -46,7 +48,9 @@ def get_tokenizer_args(model_id: str, max_tokens: int):
     }
 
 
-def tokenize_function(tokenizer, model_id, hyperparameters, examples):
+def tokenize_function(
+    tokenizer, model_id, hyperparameters, examples, input_col="text", input_format=None
+):
     """
     Tokenize the examples for the given job.
     """
@@ -57,7 +61,24 @@ def tokenize_function(tokenizer, model_id, hyperparameters, examples):
 
     tokenizer_args = get_tokenizer_args(model_id, max_tokens=max_tokens)
 
+    if input_format:
+        merged_examples = []
+        cols = re.findall(r"{(.*?)}", input_format)
+        num_examples = len(examples[cols[0]])
+
+        for example_id in range(num_examples):
+            values = {col: examples[col][example_id] for col in cols}
+            example = input_format.format(**values)
+            example.replace("\\n", "\n")
+            example.replace("\\t", "\t")
+
+            merged_examples.append(example)
+
+        _examples = merged_examples
+    else:
+        _examples = examples[input_col]
+
     # Tokenize the examples
-    tokenized_inputs = tokenizer(examples["text"], **tokenizer_args)
+    tokenized_inputs = tokenizer(_examples, **tokenizer_args)
 
     return tokenized_inputs
