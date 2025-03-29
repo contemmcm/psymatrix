@@ -1,7 +1,7 @@
 """
 Extract CohMetrix features from a set of documents.
 
-Works with cohmetrixcorecli_1.0.4_linux.i686.deb
+Works with cohmetrixcorecli-1.0.9_amd64.deb
 
 Example usage:
 
@@ -14,6 +14,7 @@ import argparse
 import os
 import subprocess
 import tempfile
+import shutil
 from functools import partial
 from glob import glob
 from multiprocessing import Pool
@@ -22,7 +23,7 @@ import pandas as pd
 from decouple import config
 
 COHMETRIX_PATH = config(
-    "COHMETRIX_PATH", default="/usr/local/bin/cohmetrixcore/net6.0/CohMetrixCoreCLI"
+    "COHMETRIX_PATH", default="/usr/local/bin/cohmetrixcorecli/CohMetrixCoreCLI"
 )
 TIMEOUT = config("COHMETRIX_TIMEOUT", cast=int, default=600)
 
@@ -59,6 +60,15 @@ parser.add_argument(
     required=False,
     help="The number of processes to use.",
     default=4,
+)
+
+parser.add_argument(
+    "--batch-size",
+    dest="batch_size",
+    type=int,
+    required=False,
+    help="The number of documents to process in each batch.",
+    default=50,
 )
 
 
@@ -129,6 +139,17 @@ def process_text(text: str):
     return params
 
 
+def process_dir(doc_dir: str, target_dir: str, processes: int):
+    """
+    Process a directory of files using CohMetrix
+    """
+
+    command = [COHMETRIX_PATH, doc_dir, target_dir, "-threads", str(processes)]
+
+    with subprocess.Popen(command) as p:
+        p.wait()
+
+
 def process_file(doc_path: str, target_dir: str = None):
     """
     Process a single file using CohMetrix
@@ -159,7 +180,9 @@ def process_file(doc_path: str, target_dir: str = None):
     return None
 
 
-def process_file_list(pathname: str, target_dir: str, processes: int):
+def process_file_list(
+    pathname: str, target_dir: str, processes: int, batch_size: int = None
+):
     """
     Process a list of files using CohMetrix
     """
@@ -181,10 +204,39 @@ def process_file_list(pathname: str, target_dir: str, processes: int):
     # Sort the files by name
     doc_paths.sort()
 
-    process_file_func = partial(process_file, target_dir=target_dir)
+    # Create batches
+    if batch_size:
+        # split documents into N batches
+        batches = create_batches(doc_paths, batch_size)
 
-    with Pool(processes) as pool:
-        pool.map(process_file_func, doc_paths)
+        for batch_dir in batches:
+            process_dir(batch_dir, target_dir, processes)
+
+    else:
+        process_file_func = partial(process_file, target_dir=target_dir)
+        with Pool(processes) as pool:
+            pool.map(process_file_func, doc_paths)
+
+
+def create_batches(doc_paths: list, batch_size: int):
+    """
+    Creates copies of files to batch directories
+    """
+    batches = [
+        doc_paths[i : i + batch_size] for i in range(0, len(doc_paths), batch_size)
+    ]
+    batch_dirs = []
+
+    for batch in batches:
+        batch_dir = tempfile.mkdtemp(prefix="cohmetrix_batch_")
+        batch_dirs.append(batch_dir)
+
+        for doc_path in batch:
+            basename = os.path.basename(doc_path)
+            target_path = os.path.join(batch_dir, basename)
+            shutil.copy(doc_path, target_path)
+
+    return batch_dirs
 
 
 def compile_features(source_dir: str, output_file: str):
@@ -241,6 +293,7 @@ def run():
     target_dir = os.path.join(target_dir_base, "cohmetrix")
     output_file = os.path.join(target_dir_base, "cohmetrix.csv")
     n_threads = args.processes
+    batch_size = args.batch_size
 
     print("Input: ", input_files)
     print("Target: ", target_dir)
@@ -249,7 +302,7 @@ def run():
     # create target base directory
     os.makedirs(target_dir, exist_ok=True)
 
-    process_file_list(input_files, target_dir, n_threads)
+    process_file_list(input_files, target_dir, n_threads, batch_size)
 
     compile_features(target_dir, output_file)
 

@@ -1,5 +1,5 @@
 cohmetrix:
-	docker build --no-cache --build-arg license=${COHMETRIX_LICENSE} -t cohmetrix -f Dockerfile.cohmetrix .
+	docker build --build-arg email=${COHMETRIX_EMAIL} --build-arg=api_key=${COHMETRIX_API_KEY} -t cohmetrix -f Dockerfile.cohmetrix .
 	
 taaco:
 	wget https://github.com/LCR-ADS-Lab/TAACO/archive/refs/heads/main.zip

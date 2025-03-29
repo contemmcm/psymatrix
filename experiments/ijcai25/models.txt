@@ -1,0 +1,15 @@
+google-bert/bert-large-cased-whole-word-masking
+google-bert/bert-large-uncased-whole-word-masking-finetuned-squad
+google-bert/bert-large-uncased-whole-word-masking
+google-bert/bert-large-uncased
+google-bert/bert-large-cased-whole-word-masking-finetuned-squad
+google-bert/bert-large-cased
+google-bert/bert-base-uncased
+google-bert/bert-base-multilingual-uncased
+google-bert/bert-base-multilingual-cased
+google-bert/bert-base-german-dbmdz-uncased
+google-bert/bert-base-german-dbmdz-cased
+google-bert/bert-base-german-cased
+google-bert/bert-base-chinese
+google-bert/bert-base-cased-finetuned-mrpc
+google-bert/bert-base-cased

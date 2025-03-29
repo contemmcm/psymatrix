@@ -1,0 +1,164 @@
+{
+  "hp_000": {
+    "learning_rate": 1e-06,
+    "batch_size": 2,
+    "max_token_size": 128,
+    "fp16": true
+  },
+  "hp_001": {
+    "learning_rate": 1e-06,
+    "batch_size": 2,
+    "max_token_size": 256,
+    "fp16": true
+  },
+  "hp_002": {
+    "learning_rate": 1e-06,
+    "batch_size": 2,
+    "max_token_size": 512,
+    "fp16": true
+  },
+  "hp_003": {
+    "learning_rate": 1e-06,
+    "batch_size": 4,
+    "max_token_size": 128,
+    "fp16": true
+  },
+  "hp_004": {
+    "learning_rate": 1e-06,
+    "batch_size": 4,
+    "max_token_size": 256,
+    "fp16": true
+  },
+  "hp_005": {
+    "learning_rate": 1e-06,
+    "batch_size": 4,
+    "max_token_size": 512,
+    "fp16": true
+  },
+  "hp_006": {
+    "learning_rate": 1e-06,
+    "batch_size": 8,
+    "max_token_size": 128,
+    "fp16": true
+  },
+  "hp_007": {
+    "learning_rate": 1e-06,
+    "batch_size": 8,
+    "max_token_size": 256,
+    "fp16": true
+  },
+  "hp_008": {
+    "learning_rate": 1e-06,
+    "batch_size": 8,
+    "max_token_size": 512,
+    "fp16": true
+  },
+  "hp_009": {
+    "learning_rate": 1e-05,
+    "batch_size": 2,
+    "max_token_size": 128,
+    "fp16": true
+  },
+  "hp_010": {
+    "learning_rate": 1e-05,
+    "batch_size": 2,
+    "max_token_size": 256,
+    "fp16": true
+  },
+  "hp_011": {
+    "learning_rate": 1e-05,
+    "batch_size": 2,
+    "max_token_size": 512,
+    "fp16": true
+  },
+  "hp_012": {
+    "learning_rate": 1e-05,
+    "batch_size": 4,
+    "max_token_size": 128,
+    "fp16": true
+  },
+  "hp_013": {
+    "learning_rate": 1e-05,
+    "batch_size": 4,
+    "max_token_size": 256,
+    "fp16": true
+  },
+  "hp_014": {
+    "learning_rate": 1e-05,
+    "batch_size": 4,
+    "max_token_size": 512,
+    "fp16": true
+  },
+  "hp_015": {
+    "learning_rate": 1e-05,
+    "batch_size": 8,
+    "max_token_size": 128,
+    "fp16": true
+  },
+  "hp_016": {
+    "learning_rate": 1e-05,
+    "batch_size": 8,
+    "max_token_size": 256,
+    "fp16": true
+  },
+  "hp_017": {
+    "learning_rate": 1e-05,
+    "batch_size": 8,
+    "max_token_size": 512,
+    "fp16": true
+  },
+  "hp_018": {
+    "learning_rate": 0.0001,
+    "batch_size": 2,
+    "max_token_size": 128,
+    "fp16": true
+  },
+  "hp_019": {
+    "learning_rate": 0.0001,
+    "batch_size": 2,
+    "max_token_size": 256,
+    "fp16": true
+  },
+  "hp_020": {
+    "learning_rate": 0.0001,
+    "batch_size": 2,
+    "max_token_size": 512,
+    "fp16": true
+  },
+  "hp_021": {
+    "learning_rate": 0.0001,
+    "batch_size": 4,
+    "max_token_size": 128,
+    "fp16": true
+  },
+  "hp_022": {
+    "learning_rate": 0.0001,
+    "batch_size": 4,
+    "max_token_size": 256,
+    "fp16": true
+  },
+  "hp_023": {
+    "learning_rate": 0.0001,
+    "batch_size": 4,
+    "max_token_size": 512,
+    "fp16": true
+  },
+  "hp_024": {
+    "learning_rate": 0.0001,
+    "batch_size": 8,
+    "max_token_size": 128,
+    "fp16": true
+  },
+  "hp_025": {
+    "learning_rate": 0.0001,
+    "batch_size": 8,
+    "max_token_size": 256,
+    "fp16": true
+  },
+  "hp_026": {
+    "learning_rate": 0.0001,
+    "batch_size": 8,
+    "max_token_size": 512,
+    "fp16": true
+  }
+}
